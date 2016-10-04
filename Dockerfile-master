@@ -1,0 +1,17 @@
+FROM ubuntu:14.04
+RUN apt-get update
+RUN apt-get install curl bzip2 -y
+RUN curl -o miniconda.sh https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
+RUN bash miniconda.sh -f -b -p /opt/anaconda
+ENV PATH /opt/anaconda/bin:$PATH
+COPY ./*.sh /
+COPY ./*.txt /
+RUN bash ./setup-master.sh
+
+# expose ports
+EXPOSE 8000
+EXPOSE 6444
+EXPOSE 6445
+EXPOSE 6446
+
+CMD python -m SimpleHTTPServer

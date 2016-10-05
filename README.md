@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/dask/dask-drmaa.svg?branch=master)](https://travis-ci.org/dask/dask-drmaa)
 
 ## Setup
 

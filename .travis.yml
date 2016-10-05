@@ -1,0 +1,50 @@
+language: python
+dist: trusty
+sudo: required
+
+notifications:
+  email: false
+
+services:
+  - docker
+
+matrix:
+  include:
+    - python: "2.7"
+      env: OS=ubuntu-14.04
+
+env:
+  global:
+    - DOCKER_COMPOSE_VERSION=1.6.0
+
+
+before_install:
+  - pwd
+
+
+  # Install docker
+  - bash ci/scripts/travis_docker_setup.sh
+  - docker version
+  - docker-compose version
+
+  # Install miniconda and create `adam` environment
+  - bash ci/scripts/conda_setup.sh
+  - export PATH="$HOME/miniconda/bin:$PATH"
+
+  # Start containers
+  - ./start-sge.sh
+  - docker ps -a
+  - docker images
+
+install:
+  - which python
+
+script:
+  - docker exec -it sge_master qsub -b y -o /dask-drmaa/scratch/out.txt -e /dask-drmaa/scratch/err.txt /dask-drmaa/scratch/test.sh
+  - docker exec -it slave_one cat /root/out.txt
+
+after_success:
+  - docker exec -it sge_master bash -c 'cat /tmp/exec*'
+  - docker exec -it slave_one bash -c 'cat /tmp/exec*'
+  - pip install coveralls
+  - coveralls

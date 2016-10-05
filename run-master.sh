@@ -16,6 +16,7 @@ qconf -ah slave_three.daskdrmaa_default
 
 qconf -as $HOSTNAME
 bash add_worker.sh dask.q slave_one.daskdrmaa_default 4
+bash add_worker.sh dask.q slave_two.daskdrmaa_default 4
 
 sudo service gridengine-master restart
 

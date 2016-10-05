@@ -1,6 +1,6 @@
 FROM ubuntu:14.04
-RUN apt-get update
-RUN apt-get install curl bzip2 -y
+RUN apt-get update -qq
+RUN apt-get install curl bzip2 -y -qq
 RUN curl -o miniconda.sh https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 RUN bash miniconda.sh -f -b -p /opt/anaconda
 ENV PATH /opt/anaconda/bin:$PATH

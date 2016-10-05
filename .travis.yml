@@ -41,10 +41,12 @@ install:
 
 script:
   - docker exec -it sge_master qsub -b y -o /dask-drmaa/scratch/out.txt -e /dask-drmaa/scratch/err.txt /dask-drmaa/scratch/test.sh
-  - docker exec -it slave_one cat /root/out.txt
+  - sleep 2
+  - docker exec -it slave_one cat /dask-drmaa/scratch/out.txt
 
 after_success:
-  - docker exec -it sge_master bash -c 'cat /tmp/exec*'
+  - docker exec -it sge_master bash -c 'cat /tmp/sge*'
   - docker exec -it slave_one bash -c 'cat /tmp/exec*'
+  - docker exec -it slave_two bash -c 'cat /tmp/exec*'
   - pip install coveralls
   - coveralls

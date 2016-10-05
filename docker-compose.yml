@@ -27,3 +27,18 @@ services:
       - "master:sge_master"
     depends_on:
       - master
+
+  slave-two:
+    build:
+      context: .
+      dockerfile: Dockerfile-slave
+    container_name: slave_two
+    hostname: slave_two.daskdrmaa_default
+    #network_mode: host
+    volumes:
+      - .:/dask-drmaa
+    command: bash /run-slave.sh
+    links:
+      - "master:sge_master"
+    depends_on:
+      - master

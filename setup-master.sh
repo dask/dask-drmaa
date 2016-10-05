@@ -13,7 +13,7 @@ echo "gridengine-client       shared/gridengineconfig boolean false" | sudo debc
 echo "postfix postfix/main_mailer_type        select  No configuration" | sudo debconf-set-selections
 
 # Install Grid Engine
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y gridengine-master gridengine-client
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y gridengine-master gridengine-client -qq
 
 # Set up Grid Engine
 sudo -u sgeadmin /usr/share/gridengine/scripts/init_cluster /var/lib/gridengine default /var/spool/gridengine/spooldb sgeadmin

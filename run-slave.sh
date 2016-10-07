@@ -7,4 +7,4 @@ sleep 4
 
 sudo service gridengine-exec restart
 
-python -m SimpleHTTPServer 8888
+python -m http.server 8888

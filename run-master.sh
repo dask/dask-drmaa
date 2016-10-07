@@ -20,4 +20,4 @@ bash add_worker.sh dask.q slave_two.daskdrmaa_default 4
 
 sudo service gridengine-master restart
 
-python -m SimpleHTTPServer 8888
+python -m http.server 8888

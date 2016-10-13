@@ -6,7 +6,7 @@ from distributed.utils_test import loop
 
 
 def test_simple(loop):
-    with DRMAACluster() as cluster:
+    with DRMAACluster(scheduler_port=0) as cluster:
         with Client(cluster, loop=loop) as client:
             cluster.start_workers(2)
             future = client.submit(lambda x: x + 1, 1)

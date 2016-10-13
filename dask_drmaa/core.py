@@ -6,8 +6,8 @@ import drmaa
 from distributed import LocalCluster
 
 class DRMAACluster(object):
-    def __init__(self):
-        self.local_cluster = LocalCluster(n_workers=0)
+    def __init__(self, **kwargs):
+        self.local_cluster = LocalCluster(n_workers=0, **kwargs)
         self.session = drmaa.Session()
         self.session.initialize()
 
@@ -31,13 +31,17 @@ class DRMAACluster(object):
 
     def stop_workers(self, worker_ids, sync=False):
         for wid in worker_ids:
-            self.session.control(wid, drmaa.JobControlAction.TERMINATE)
+            try:
+                self.session.control(wid, drmaa.JobControlAction.TERMINATE)
+            except drmaa.errors.InvalidJobException:
+                pass
 
         if sync:
             self.session.synchronize(worker_ids, dispose=True)
 
     def close(self):
-        self.stop_workers(self.workers, sync=True)
+        if self.workers:
+            self.stop_workers(self.workers, sync=True)
         self.local_cluster.close()
 
     def __enter__(self):

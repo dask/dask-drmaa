@@ -13,6 +13,8 @@ DRMAA_-compliant job scheduler.
 Example
 -------
 
+Launch from Python
+
 .. code-block:: python
 
    from dask_drmaa import DRMAACluster
@@ -25,6 +27,10 @@ Example
    >>> future = client.submit(lambda x: x + 1, 10)
    >>> future.result()
    11
+
+Or launch from the command line::
+
+    $ dask-drmaa 10  # starts local scheduler and ten remote workers
 
 
 Install

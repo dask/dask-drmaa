@@ -3,8 +3,8 @@
 ## Setup
 
 ```bash
-$ docker-compose up
-$ docker exec -it slave_one /etc/init.d/gridengine-exec restart
+$ docker-compose build
+$ ./start-sge
 ```
 
 ```bash

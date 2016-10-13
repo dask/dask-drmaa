@@ -7,7 +7,7 @@ RUN apt-get install curl bzip2 -y
 RUN curl -o miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 RUN bash miniconda.sh -f -b -p /opt/anaconda
 ENV PATH /opt/anaconda/bin:$PATH
-RUN conda install dask distributed drmaa
+RUN conda install dask distributed drmaa nomkl pytest mock
 COPY ./setup-slave.sh /
 COPY ./run-slave.sh /
 RUN bash ./setup-slave.sh

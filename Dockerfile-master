@@ -18,4 +18,8 @@ EXPOSE 6444
 EXPOSE 6445
 EXPOSE 6446
 
+ENV DRMAA_LIBRARY_PATH /usr/lib/gridengine-drmaa/lib/libdrmaa.so
+ENV SGE_ROOT /var/lib/gridengine/
+ENV SGE_CELL default
+
 CMD python -m SimpleHTTPServer

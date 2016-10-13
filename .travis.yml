@@ -40,9 +40,8 @@ install:
   - which python
 
 script:
-  - docker exec -it sge_master qsub -b y -o /dask-drmaa/scratch/out.txt -e /dask-drmaa/scratch/err.txt /dask-drmaa/scratch/test.sh
-  - sleep 2
-  - docker exec -it slave_one cat /dask-drmaa/scratch/out.txt
+  - docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py install"
+  - docker exec -it sge_master py.test dask-drmaa/dask_drmaa --verbose
 
 after_success:
   - docker exec -it sge_master bash -c 'cat /tmp/sge*'

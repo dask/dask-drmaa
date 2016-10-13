@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile-slave
     container_name: slave_one
-    hostname: slave_one.daskdrmaa_default
+    hostname: slave_one
     #network_mode: host
     volumes:
       - .:/dask-drmaa
@@ -33,7 +33,7 @@ services:
       context: .
       dockerfile: Dockerfile-slave
     container_name: slave_two
-    hostname: slave_two.daskdrmaa_default
+    hostname: slave_two
     #network_mode: host
     volumes:
       - .:/dask-drmaa

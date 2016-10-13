@@ -16,4 +16,4 @@ def test_simple(loop):
             start = time()
             while client.ncores():
                 sleep(0.2)
-                assert time() < start + 10
+                assert time() < start + 60

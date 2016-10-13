@@ -1,8 +1,7 @@
-[![Build Status](https://travis-ci.org/dask/dask-drmaa.svg?branch=master)](https://travis-ci.org/dask/dask-drmaa)
-
-
 Dask on DRMAA
 =============
+
+|Build Status|
 
 Deploy a Dask.distributed_ cluster on top of a cluster running a
 DRMAA_-compliant job scheduler.
@@ -63,3 +62,7 @@ And run tests with py.test in the master docker container
 
   docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py install"
   docker exec -it sge_master py.test dask-drmaa/dask_drmaa --verbose
+
+
+.. |Build Status| image:: https://travis-ci.org/dask/dask-drmaa.svg?branch=master
+   :target: https://travis-ci.org/dask/dask-drmaa

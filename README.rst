@@ -6,9 +6,6 @@ Dask on DRMAA
 Deploy a Dask.distributed_ cluster on top of a cluster running a
 DRMAA_-compliant job scheduler.
 
-.. _Dask.distributed: http://distributed.readthedocs.io/en/latest/
-.. _DRMAA: https://www.drmaa.org/
-
 
 Example
 -------
@@ -68,6 +65,24 @@ And run tests with py.test in the master docker container
 
   docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py install"
   docker exec -it sge_master py.test dask-drmaa/dask_drmaa --verbose
+
+
+Related Work
+------------
+
+*  DRMAA_: The Distributed Resource Management Application API, a high level
+  API for general use on traditional job schedulers
+*  drmaa-python_: The Python bindings for DRMAA
+*  DaskSGE_: An earlier dask-drmaa implementation
+*  `Son of Grid Engine`_: The default implementation used in testing
+*  Dask.distributed_: The actual distributed computing library this launches
+
+.. _DRMAA: https://www.drmaa.org/
+.. _drmaa-python: http://drmaa-python.readthedocs.io/en/latest/
+.. _`Son of Grid Engine`: https://arc.liv.ac.uk/trac/SGE
+.. _dasksge: https://github.com/mfouesneau/dasksge
+.. _Dask.distributed: http://distributed.readthedocs.io/en/latest/
+.. _DRMAA: https://www.drmaa.org/
 
 
 .. |Build Status| image:: https://travis-ci.org/dask/dask-drmaa.svg?branch=master

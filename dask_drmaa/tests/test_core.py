@@ -13,7 +13,19 @@ def test_simple(loop):
             assert future.result() == 2
 
             cluster.stop_workers(cluster.workers)
+
             start = time()
             while client.ncores():
                 sleep(0.2)
                 assert time() < start + 60
+
+            assert not cluster.workers
+
+
+def test_str(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        cluster.start_workers(2)
+        assert 'DRMAACluster' in str(cluster)
+        assert 'DRMAACluster' in repr(cluster)
+        assert '2' in str(cluster)
+        assert '2' in repr(cluster)

@@ -57,13 +57,13 @@ as follows
 .. code-block:: bash
 
    docker-compose build
-   ./start-sge
+   ./start-sge.sh
 
 And run tests with py.test in the master docker container
 
 .. code-block:: bash
 
-  docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py install"
+  docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py develop"
   docker exec -it sge_master py.test dask-drmaa/dask_drmaa --verbose
 
 

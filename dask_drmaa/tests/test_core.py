@@ -30,3 +30,14 @@ def test_str(loop):
         assert '2' in str(cluster)
         assert '2' in repr(cluster)
         1 + 1
+
+
+def test_memory(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        cluster.start_workers(2, memory=2)
+        with Client(cluster, loop=loop) as client:
+            while len(cluster.scheduler.ncores) < 2:
+                sleep(0.1)
+
+            assert all(1e9 < info['memory_limit'] < 2e9
+                       for info in cluster.scheduler.worker_info.values())

@@ -55,10 +55,13 @@ class DRMAACluster(object):
         wt.nativeSpecification = self.nativeSpecification
         return wt
 
-    def start_workers(self, n=1, nativeSpecification=''):
+    def start_workers(self, n=1, memory=None, nativeSpecification=''):
         wt = self.createJobTemplate()
         if nativeSpecification:
             wt.nativeSpecification += nativeSpecification
+        if memory:
+            wt.nativeSpecification += ' -l h_vmem=%dG' % memory
+            wt.args += ['--memory-limit', str(memory * 1e9 * 0.6)]
 
         ids = self.session.runBulkJobs(wt, 1, n, 1)
         logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])

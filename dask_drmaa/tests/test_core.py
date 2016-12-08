@@ -1,6 +1,6 @@
 from time import sleep, time
 
-from dask_drmaa import DRMAACluster
+from dask_drmaa import DRMAACluster, SGECluster
 from distributed import Client
 from distributed.utils_test import loop
 
@@ -33,7 +33,7 @@ def test_str(loop):
 
 
 def test_memory(loop):
-    with DRMAACluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0) as cluster:
         cluster.start_workers(2, memory=2)
         with Client(cluster, loop=loop) as client:
             while len(cluster.scheduler.ncores) < 2:

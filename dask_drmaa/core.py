@@ -45,23 +45,18 @@ class DRMAACluster(object):
     def scheduler_address(self):
         return self.scheduler.address
 
-    def createJobTemplate(self):
+    def createJobTemplate(self, nativeSpecification=''):
         wt = self.session.createJobTemplate()
         wt.jobName = self.jobName
         wt.remoteCommand = self.remoteCommand
         wt.args = self.args
         wt.outputPath = self.outputPath
         wt.errorPath = self.errorPath
-        wt.nativeSpecification = self.nativeSpecification
+        wt.nativeSpecification = self.nativeSpecification + ' ' + nativeSpecification
         return wt
 
-    def start_workers(self, n=1, memory=None, nativeSpecification=''):
-        wt = self.createJobTemplate()
-        if nativeSpecification:
-            wt.nativeSpecification += nativeSpecification
-        if memory:
-            wt.nativeSpecification += ' -l h_vmem=%dG' % memory
-            wt.args += ['--memory-limit', str(memory * 1e9 * 0.6)]
+    def start_workers(self, n=1, **kwargs):
+        wt = self.createJobTemplate(**kwargs)
 
         ids = self.session.runBulkJobs(wt, 1, n, 1)
         logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
@@ -105,3 +100,24 @@ class DRMAACluster(object):
         return "<%s: %d workers>" % (self.__class__.__name__, len(self.workers))
 
     __repr__ = __str__
+
+
+class SGECluster(DRMAACluster):
+    def createJobTemplate(self, nativeSpecification='', memory=None):
+        args = self.args
+        ns = self.nativeSpecification
+        if nativeSpecification:
+            ns = ns + nativeSpecification
+        if memory:
+            args = args + ['--memory-limit', str(memory * 1e9 * 0.6)]
+            ns += ' -l h_vmem=%dG' % memory
+
+        wt = self.session.createJobTemplate()
+        wt.jobName = self.jobName
+        wt.remoteCommand = self.remoteCommand
+        wt.args = args
+        wt.outputPath = self.outputPath
+        wt.errorPath = self.errorPath
+        wt.nativeSpecification = ns
+
+        return wt

@@ -29,3 +29,4 @@ def test_str(loop):
         assert 'DRMAACluster' in repr(cluster)
         assert '2' in str(cluster)
         assert '2' in repr(cluster)
+        1 + 1

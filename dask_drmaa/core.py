@@ -1,3 +1,4 @@
+import logging
 import os
 import socket
 import sys
@@ -5,28 +6,62 @@ import sys
 import drmaa
 from distributed import LocalCluster
 
+
+logger = logging.getLogger(__name__)
+
+
 class DRMAACluster(object):
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 jobName='dask-worker',
+                 remoteCommand=os.path.join(sys.exec_prefix, 'bin', 'dask-worker'),
+                 args=(),
+                 outputPath=':%s/out' % os.getcwd(),
+                 errorPath=':%s/err' % os.getcwd(),
+                 workingDirectory = os.getcwd(),
+                 nativeSpecification='',
+                 **kwargs):
+
+        logger.info("Start local scheduler")
         self.local_cluster = LocalCluster(n_workers=0, **kwargs)
         self.session = drmaa.Session()
         self.session.initialize()
+        logger.info("Initialize connection to job scheduler")
 
-        self.worker_template = self.session.createJobTemplate()
-        self.worker_template.remoteCommand = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
-        self.worker_template.jobName = 'dask-worker'
-        self.worker_template.args = ['%s:%d' % (socket.gethostname(), self.local_cluster.scheduler.port)]
-        self.worker_template.outputPath = ':/%s/out' % os.getcwd()
-        self.worker_template.errorPath = ':/%s/err' % os.getcwd()
-        self.worker_template.workingDirectory = os.getcwd()
+        self.jobName = jobName
+        self.remoteCommand = remoteCommand
+        self.args = ['%s:%d' % (socket.gethostname(),
+                     self.local_cluster.scheduler.port)] + list(args)
+        self.outputPath = outputPath
+        self.errorPath = errorPath
+        self.nativeSpecification = nativeSpecification
 
         self.workers = set()
 
     @property
-    def scheduler_address(self):
-        return self.local_cluster.scheduler_address
+    def scheduler(self):
+        return self.local_cluster.scheduler
 
-    def start_workers(self, n=1):
-        ids = self.session.runBulkJobs(self.worker_template, 1, n, 1)
+    @property
+    def scheduler_address(self):
+        return self.scheduler.address
+
+    def createJobTemplate(self):
+        wt = self.session.createJobTemplate()
+        wt.jobName = self.jobName
+        wt.remoteCommand = self.remoteCommand
+        wt.args = self.args
+        wt.outputPath = self.outputPath
+        wt.errorPath = self.errorPath
+        wt.nativeSpecification = self.nativeSpecification
+        return wt
+
+    def start_workers(self, n=1, nativeSpecification=''):
+        wt = self.createJobTemplate()
+        if nativeSpecification:
+            wt.nativeSpecification += nativeSpecification
+
+        ids = self.session.runBulkJobs(wt, 1, n, 1)
+        logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
         self.workers.update(ids)
 
     def stop_workers(self, worker_ids, sync=False):
@@ -38,6 +73,7 @@ class DRMAACluster(object):
                 pass
             self.workers.remove(wid)
 
+        logger.info("Stop workers %s", worker_ids)
         if sync:
             self.session.synchronize(worker_ids, dispose=True)
 

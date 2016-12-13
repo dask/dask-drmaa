@@ -5,6 +5,7 @@ import sys
 
 import drmaa
 from distributed import LocalCluster
+from distributed.utils import log_errors
 
 
 logger = logging.getLogger(__name__)
@@ -56,11 +57,12 @@ class DRMAACluster(object):
         return wt
 
     def start_workers(self, n=1, **kwargs):
-        wt = self.createJobTemplate(**kwargs)
+        with log_errors():
+            wt = self.createJobTemplate(**kwargs)
 
-        ids = self.session.runBulkJobs(wt, 1, n, 1)
-        logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
-        self.workers.update(ids)
+            ids = self.session.runBulkJobs(wt, 1, n, 1)
+            logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
+            self.workers.update(ids)
 
     def stop_workers(self, worker_ids, sync=False):
         worker_ids = list(worker_ids)
@@ -110,6 +112,7 @@ class SGECluster(DRMAACluster):
             ns = ns + nativeSpecification
         if memory:
             args = args + ['--memory-limit', str(memory * 0.6)]
+            args = args + ['--resources', 'memory=%f' % (memory * 0.8)]
             ns += ' -l h_vmem=%dG' % int(memory / 1e9) # / cpus
         if cpus:
             args = args + ['--nprocs', '1', '--nthreads', str(cpus)]

@@ -117,6 +117,7 @@ class SGECluster(DRMAACluster):
         if cpus:
             args = args + ['--nprocs', '1', '--nthreads', str(cpus)]
             # ns += ' -l TODO=%d' % (cpu + 1)
+        args = args + ['--name', '$PBS_JOBID']
 
         wt = self.session.createJobTemplate()
         wt.jobName = self.jobName

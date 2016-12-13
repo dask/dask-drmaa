@@ -3,7 +3,7 @@ from dask_drmaa.adaptive import Adaptive
 from distributed import Client
 from distributed.utils_test import loop, inc
 
-from time import sleep
+from time import sleep, time
 
 def test_adaptive_memory(loop):
     with SGECluster(scheduler_port=0) as cluster:
@@ -14,3 +14,10 @@ def test_adaptive_memory(loop):
             assert len(cluster.scheduler.ncores) > 0
             r = list(cluster.scheduler.worker_resources.values())[0]
             assert r['memory'] > 1e9
+
+            del future
+
+            start = time()
+            while cluster.workers:
+                sleep(0.1)
+                assert time() < start + 10

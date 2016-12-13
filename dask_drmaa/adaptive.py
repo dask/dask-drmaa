@@ -48,7 +48,8 @@ class Adaptive(object):
 
             if workers:
                 logger.info("Retiring workers %s", workers)
-                f = self.cluster.scale_down(workers)
+                ids = [self.scheduler.worker_info[w]['name'] for w in workers]
+                f = self.cluster.stop_workers(ids)
                 if gen.is_future(f):
                     yield f
 
@@ -73,7 +74,7 @@ class Adaptive(object):
                     logger.info("Starting worker")
                     self.cluster.start_workers(1, memory=memory * 2)
 
-                # yield self._retire_workers()
+                yield self._retire_workers()
             finally:
                 self._adapting = False
 

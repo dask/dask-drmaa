@@ -103,14 +103,17 @@ class DRMAACluster(object):
 
 
 class SGECluster(DRMAACluster):
-    def createJobTemplate(self, nativeSpecification='', memory=None):
+    def createJobTemplate(self, nativeSpecification='', cpus=1, memory=None):
         args = self.args
         ns = self.nativeSpecification
         if nativeSpecification:
             ns = ns + nativeSpecification
         if memory:
             args = args + ['--memory-limit', str(memory * 1e9 * 0.6)]
-            ns += ' -l h_vmem=%dG' % memory
+            ns += ' -l h_vmem=%dG' % memory  # / cpus
+        if cpus:
+            args = args + ['--nprocs', '1', '--nthreads', str(cpus)]
+            # ns += ' -l TODO=%d' % (cpu + 1)
 
         wt = self.session.createJobTemplate()
         wt.jobName = self.jobName

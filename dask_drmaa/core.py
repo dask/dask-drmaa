@@ -109,8 +109,8 @@ class SGECluster(DRMAACluster):
         if nativeSpecification:
             ns = ns + nativeSpecification
         if memory:
-            args = args + ['--memory-limit', str(memory * 1e9 * 0.6)]
-            ns += ' -l h_vmem=%dG' % memory  # / cpus
+            args = args + ['--memory-limit', str(memory * 0.6)]
+            ns += ' -l h_vmem=%dG' % int(memory / 1e9) # / cpus
         if cpus:
             args = args + ['--nprocs', '1', '--nthreads', str(cpus)]
             # ns += ' -l TODO=%d' % (cpu + 1)

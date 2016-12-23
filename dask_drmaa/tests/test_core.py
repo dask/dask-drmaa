@@ -34,7 +34,7 @@ def test_str(loop):
 
 def test_sge_memory(loop):
     with SGECluster(scheduler_port=0) as cluster:
-        cluster.start_workers(2, memory=2)
+        cluster.start_workers(2, memory=2e9)
         with Client(cluster, loop=loop) as client:
             while len(cluster.scheduler.ncores) < 2:
                 sleep(0.1)

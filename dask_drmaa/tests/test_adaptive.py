@@ -17,7 +17,9 @@ def test_adaptive_memory(loop):
 
             del future
 
+            """
             start = time()
             while cluster.workers:
                 sleep(0.1)
                 assert time() < start + 10
+            """

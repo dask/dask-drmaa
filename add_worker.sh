@@ -18,6 +18,9 @@ qconf -aattr hostgroup hostlist $HOSTNAME @allhosts
 # enable the host for the queue, in case it was disabled and not removed
 qmod -e $QUEUE@$HOSTNAME
 
+# Add memory resource
+qconf -mattr exechost complex_values h_vmem=100G $HOSTNAME
+
 if [ "$SLOTS" ]; then
     qconf -aattr queue slots "[$HOSTNAME=$SLOTS]" $QUEUE
 fi

@@ -7,7 +7,6 @@ import drmaa
 from distributed import LocalCluster
 from distributed.utils import log_errors
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +35,7 @@ class DRMAACluster(object):
         self.errorPath = errorPath
         self.nativeSpecification = nativeSpecification
 
-        self.workers = set()
+        self.workers = {}
 
     @property
     def scheduler(self):
@@ -62,7 +61,7 @@ class DRMAACluster(object):
 
             ids = self.session.runBulkJobs(wt, 1, n, 1)
             logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
-            self.workers.update(ids)
+            self.workers.update({jid: kwargs for jid in ids})
 
     def stop_workers(self, worker_ids, sync=False):
         worker_ids = list(worker_ids)
@@ -71,7 +70,7 @@ class DRMAACluster(object):
                 self.session.control(wid, drmaa.JobControlAction.TERMINATE)
             except drmaa.errors.InvalidJobException:
                 pass
-            self.workers.remove(wid)
+            self.workers.pop(wid)
 
         logger.info("Stop workers %s", worker_ids)
         if sync:
@@ -86,6 +85,27 @@ class DRMAACluster(object):
         except drmaa.errors.NoActiveSessionException:
             pass
 
+    def jobStatus(self, jid):
+        """Return the status of job 'jid' as a string instead of a drmaa job state
+        """
+        status_mapping = {drmaa.JobState.UNDETERMINED: 'UNDETERMINED',
+                          drmaa.JobState.QUEUED_ACTIVE: 'QUEUED_ACTIVE',
+                          drmaa.JobState.SYSTEM_ON_HOLD: 'SYSTEM_ON_HOLD',
+                          drmaa.JobState.USER_ON_HOLD: 'USER_ON_HOLD',
+                          drmaa.JobState.USER_SYSTEM_ON_HOLD: 'USER_SYSTEM_ON_HOLD',
+                          drmaa.JobState.RUNNING: 'RUNNING',
+                          drmaa.JobState.SYSTEM_SUSPENDED: 'SYSTEM_SUSPENDED',
+                          drmaa.JobState.USER_SUSPENDED: 'USER_SUSPENDED',
+                          drmaa.JobState.DONE: 'DONE',
+                          drmaa.JobState.FAILED: 'FAILED'}
+        
+        try:
+            status = self.session.jobStatus(jid)
+        except drmaa.errors.InvalidJobException:
+            return "INVALID_JOB"
+
+        return status_mapping.get(status, "INVALID")
+        
     def __enter__(self):
         return self
 

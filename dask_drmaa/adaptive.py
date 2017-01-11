@@ -71,8 +71,16 @@ class Adaptive(object):
                     key = first(s.unrunnable)
                     memory = s.resource_restrictions[key]['memory']
 
-                    logger.info("Starting worker")
-                    self.cluster.start_workers(1, memory=memory * 2)
+                    #We need a worker with more resources. See if one has already been requested.
+                    for worker, resources in self.cluster.workers.items():
+                        if (resources.get("memory", 0) >= memory * 2 and
+                            self.cluster.jobStatus(worker) in ('QUEUED_ACTIVE', 'RUNNING')):
+                                #There is already an existing valid worker requested with the necessary
+                                #  resources to run this task. If the worker has any other status (like DONE, HOLD, etc.), scheduler another task.
+                                break
+                    else:
+                        logger.info("Starting worker")
+                        self.cluster.start_workers(1, memory=memory * 2)
 
                 yield self._retire_workers()
             finally:

@@ -35,6 +35,8 @@ class DRMAACluster(object):
         self.errorPath = errorPath
         self.nativeSpecification = nativeSpecification
 
+        #maps cluster job ids to the resources requested in the job
+        #e.g. {'15.3': {'memory': 9gb, 'cpus': 4}}
         self.workers = {}
 
     @property

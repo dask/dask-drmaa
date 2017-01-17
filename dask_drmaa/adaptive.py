@@ -42,10 +42,11 @@ class Adaptive(object):
 
     @gen.coroutine
     def _retire_workers(self):
-        """Get the cluster scheduler to cleanup any workers it decides can retire
+        """
+        Get the cluster scheduler to cleanup any workers it decides can retire
         """
         with log_errors():
-            workers = yield self.scheduler.retire_workers(remove=True)
+            workers = yield self.scheduler.retire_workers(remove=True, close=True)
             logger.info("Retiring workers {}".format(workers))
 
     @gen.coroutine
@@ -63,10 +64,10 @@ class Adaptive(object):
                     key = first(s.unrunnable)
                     memory = s.resource_restrictions[key]['memory']
 
-                    #We need a worker with more resources. See if one has already been requested.
+                    #  We need a worker with more resources. See if one has already been requested.
                     for worker, resources in self.cluster.workers.items():
                         if (resources.get("memory", 0) >= memory * 2 and
-                            self.cluster.jobStatus(worker) in ('running', 'queued_active')):
+                            self.cluster.session.jobStatus(worker) in ('running', 'queued_active')):
                                 #There is already an existing valid worker requested with the necessary
                                 #  resources to run this task. If the worker has any other status (like DONE, HOLD, etc.), scheduler another task.
                                 break

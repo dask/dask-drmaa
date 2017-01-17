@@ -24,7 +24,7 @@ class DRMAACluster(object):
         """
         Parameters
         ----------
-        jobName: string name of the job as known by the DRMAA cluster. 
+        jobName: string name of the job as known by the DRMAA cluster.
                  For an SGE cluster, this can be seen with the "qstat" command.
         remoteCommand: The path to the executable that this cluster should execute in a job by default
         args: an iterable of arguments for the remoteCommand application
@@ -49,14 +49,7 @@ class DRMAACluster(object):
         self.nativeSpecification = nativeSpecification
         self.max_runtime = max_runtime
 
-        #maps cluster job ids to the resources requested in the job
-        #e.g. {'15.3': {'memory': 9gb, 'cpus': 4}}
-        self.workers = {}
-
-        #The worker cleanup time should be fairly easy to configure
-        #Sometimes, we only want to cleanup a worker that has been idle
-        # for at least 30 minutes.
-        #Other times, we should cleanup the worker after 1 minute.
+        self.workers = {}  # {job-id: {'resource': quanitty}}
 
     @property
     def scheduler(self):

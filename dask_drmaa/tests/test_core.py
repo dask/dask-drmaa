@@ -1,5 +1,7 @@
 from time import sleep, time
 
+import pytest
+
 from dask_drmaa import DRMAACluster, SGECluster
 from distributed import Client
 from distributed.utils_test import loop
@@ -51,3 +53,16 @@ def test_sge_cpus(loop):
                 sleep(0.1)
 
             assert list(cluster.scheduler.ncores.values()) == [2]
+
+
+@pytest.mark.xfail(reason="Can't use job name environment variable as arg")
+def test_job_name_as_name(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        cluster.start_workers(2)
+        while len(cluster.scheduler.workers) < 1:
+            sleep(0.1)
+            names = [cluster.scheduler.worker_info[w]['name']
+                     for w in cluster.scheduler.workers]
+
+            assert all('job' not in name.lower() for name in names)
+            assert all('drmaa' not in name.lower() for name in names)

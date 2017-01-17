@@ -33,17 +33,37 @@ class DRMAACluster(object):
                  max_runtime='1:00:00', #1 hour
                  **kwargs):
         """
+        Dask workers launched by a DRMAA-compatible cluster
+
         Parameters
         ----------
-        jobName: string name of the job as known by the DRMAA cluster.
-                 For an SGE cluster, this can be seen with the "qstat" command.
-        remoteCommand: The path to the executable that this cluster should execute in a job by default
-        args: an iterable of arguments for the remoteCommand application
-        outputPath: string for the path where stdout data should be stored
-        errorPath: string for the path where stderr data should be stored
-        workingDirector: string for the working path where the remoteCommand should execute
-        nativeSpecification: string of options native to the specific cluster/batch scheduler that the job will run on
-        max_runtime: string of "hours:minutes:seconds" telling the default maximum runtime of a job
+        jobName: string
+            Name of the job as known by the DRMAA cluster.
+        remoteCommand: string
+            Path to the dask-worker executable
+        args: list
+            Extra string arguments to pass to dask-worker
+        outputPath: string
+        errorPath: string
+        workingDirectory: string
+            Where dask-worker runs, defaults to current directory
+        nativeSpecification: string
+            Options native to the job scheduler
+        max_runtime: string
+            Maximum runtime of worker jobs in format ``"HH:MM:SS"``
+
+        Examples
+        --------
+        >>> from dask_drmas import DRMAACluster          # doctest: +SKIP
+        >>> cluster = DRMAACluster()                     # doctest: +SKIP
+        >>> cluster.start_workers(10)                    # doctest: +SKIP
+
+        >>> from distributed import Client               # doctest: +SKIP
+        >>> client = Client(cluster)                     # doctest: +SKIP
+
+        >>> future = client.submit(lanbda x: x + 1, 10)  # doctest: +SKIP
+        >>> future.result()                              # doctest: +SKIP
+        11
         """
         logger.info("Start local scheduler")
         self.local_cluster = LocalCluster(n_workers=0, **kwargs)
@@ -61,7 +81,7 @@ class DRMAACluster(object):
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
                                                   callback_time=1000,
                                                   io_loop=self.scheduler.loop)
-        self._cleanup_callback.start()
+        # self._cleanup_callback.start()
 
         self.workers = {}  # {job-id: {'resource': quanitty}}
 
@@ -105,24 +125,10 @@ class DRMAACluster(object):
             get_session().synchronize(worker_ids, dispose=True)
 
     def close(self):
+        logger.info("Closing DRMAA cluster")
         self.local_cluster.close()
         if self.workers:
             self.stop_workers(self.workers, sync=True)
-
-    def jobStatus(self, jid):
-        """Return the DRMAA job status object.
-        This hold stuff like start time, wall clock limit, job requirements, etc. as attributes
-        This is a simple wrapper for the DRMAA library, and matches its name
-        """
-        status = get_session().jobStatus(jid)
-        return status
-
-    def startTime(self, jid):
-        """Return a timestamp string of the job start time.
-        This is a simple wrapper for the DRMAA library, and matches its name
-        """
-        status = self.jobStatus(jid)
-        return status.startTime
 
     def __enter__(self):
         return self
@@ -133,6 +139,7 @@ class DRMAACluster(object):
     def cleanup_closed_workers(self):
         for jid in list(self.workers):
             if get_session().jobStatus(jid) == 'closed':
+                logger.info("Removing closed worker %s", jid)
                 del self.workers[jid]
 
     def __del__(self):
@@ -145,36 +152,3 @@ class DRMAACluster(object):
         return "<%s: %d workers>" % (self.__class__.__name__, len(self.workers))
 
     __repr__ = __str__
-
-
-class SGECluster(DRMAACluster):
-    default_memory = None
-    default_memory_fraction = 0.6
-    def createJobTemplate(self, nativeSpecification='', cpus=1, memory=None,
-            memory_fraction=None):
-        memory = memory or self.default_memory
-        memory_fraction = memory_fraction or self.default_memory_fraction
-
-        args = self.args
-        ns = self.nativeSpecification
-        if nativeSpecification:
-            ns = ns + nativeSpecification
-        if memory:
-            args = args + ['--memory-limit', str(memory * memory_fraction)]
-            args = args + ['--resources', 'memory=%f' % (memory * 0.8)]
-            ns += ' -l h_vmem=%dG' % int(memory / 1e9) # / cpus
-        if cpus:
-            args = args + ['--nprocs', '1', '--nthreads', str(cpus)]
-            # ns += ' -l TODO=%d' % (cpu + 1)
-
-        ns += ' -l h_rt={}'.format(self.max_runtime)
-
-        wt = get_session().createJobTemplate()
-        wt.jobName = self.jobName
-        wt.remoteCommand = self.remoteCommand
-        wt.args = args
-        wt.outputPath = self.outputPath
-        wt.errorPath = self.errorPath
-        wt.nativeSpecification = ns
-
-        return wt

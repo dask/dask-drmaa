@@ -40,11 +40,10 @@ def test_job_name_as_name(loop):
         cluster.start_workers(2)
         while len(cluster.scheduler.workers) < 1:
             sleep(0.1)
-            names = [cluster.scheduler.worker_info[w]['name']
-                     for w in cluster.scheduler.workers]
+            names = {cluster.scheduler.worker_info[w]['name']
+                     for w in cluster.scheduler.workers}
 
-            assert all('job' not in name.lower() for name in names)
-            assert all('drmaa' not in name.lower() for name in names)
+            assert names == set(cluster.workers)
 
 
 def test_multiple_overlapping_clusters(loop):

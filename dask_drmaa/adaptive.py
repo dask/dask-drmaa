@@ -7,6 +7,8 @@ from toolz import first
 from tornado import gen
 from tornado.ioloop import PeriodicCallback
 
+from .core import get_session
+
 logger = logging.getLogger(__file__)
 
 
@@ -68,7 +70,7 @@ class Adaptive(object):
                     #  We need a worker with more resources. See if one has already been requested.
                     for worker, resources in self.cluster.workers.items():
                         if (resources.get("memory", 0) >= memory * 2 and
-                            self.cluster.session.jobStatus(worker) in ('running', 'queued_active')):
+                            get_session().jobStatus(worker) in ('running', 'queued_active')):
                                 #There is already an existing valid worker requested with the necessary
                                 #  resources to run this task. If the worker has any other status (like DONE, HOLD, etc.), scheduler another task.
                                 break

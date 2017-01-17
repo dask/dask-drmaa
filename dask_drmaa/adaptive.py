@@ -9,6 +9,7 @@ from tornado.ioloop import PeriodicCallback
 
 logger = logging.getLogger(__file__)
 
+
 class Adaptive(object):
     '''
     Adaptively allocate workers based on scheduler load.  A superclass.

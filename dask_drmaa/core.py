@@ -4,6 +4,8 @@ import socket
 import sys
 
 import drmaa
+from tornado.ioloop import PeriodicCallback
+
 from distributed import LocalCluster
 from distributed.utils import log_errors
 
@@ -48,6 +50,11 @@ class DRMAACluster(object):
         self.errorPath = errorPath
         self.nativeSpecification = nativeSpecification
         self.max_runtime = max_runtime
+
+        self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
+                                                  callback_time=1000,
+                                                  io_loop=self.scheduler.loop)
+        self._cleanup_callback.start()
 
         self.workers = {}  # {job-id: {'resource': quanitty}}
 
@@ -113,12 +120,17 @@ class DRMAACluster(object):
         """
         status = self.jobStatus(jid)
         return status.startTime
-        
+
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    def cleanup_closed_workers(self):
+        for jid in list(self.workers):
+            if self.session.jobStatus(jid) == 'closed':
+                del self.workers[jid]
 
     def __del__(self):
         try:
@@ -153,7 +165,7 @@ class SGECluster(DRMAACluster):
             # ns += ' -l TODO=%d' % (cpu + 1)
 
         ns += ' -l h_rt={}'.format(self.max_runtime)
-        
+
         wt = self.session.createJobTemplate()
         wt.jobName = self.jobName
         wt.remoteCommand = self.remoteCommand

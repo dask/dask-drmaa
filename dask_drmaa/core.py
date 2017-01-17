@@ -19,8 +19,21 @@ class DRMAACluster(object):
                  errorPath=':%s/err' % os.getcwd(),
                  workingDirectory = os.getcwd(),
                  nativeSpecification='',
+                 max_runtime='1:00:00', #1 hour
                  **kwargs):
-
+        """
+        Parameters
+        ----------
+        jobName: string name of the job as known by the DRMAA cluster. 
+                 For an SGE cluster, this can be seen with the "qstat" command.
+        remoteCommand: The path to the executable that this cluster should execute in a job by default
+        args: an iterable of arguments for the remoteCommand application
+        outputPath: string for the path where stdout data should be stored
+        errorPath: string for the path where stderr data should be stored
+        workingDirector: string for the working path where the remoteCommand should execute
+        nativeSpecification: string of options native to the specific cluster/batch scheduler that the job will run on
+        max_runtime: string of "hours:minutes:seconds" telling the default maximum runtime of a job
+        """
         logger.info("Start local scheduler")
         self.local_cluster = LocalCluster(n_workers=0, **kwargs)
         self.session = drmaa.Session()
@@ -34,10 +47,16 @@ class DRMAACluster(object):
         self.outputPath = outputPath
         self.errorPath = errorPath
         self.nativeSpecification = nativeSpecification
+        self.max_runtime = max_runtime
 
         #maps cluster job ids to the resources requested in the job
         #e.g. {'15.3': {'memory': 9gb, 'cpus': 4}}
         self.workers = {}
+
+        #The worker cleanup time should be fairly easy to configure
+        #Sometimes, we only want to cleanup a worker that has been idle
+        # for at least 30 minutes.
+        #Other times, we should cleanup the worker after 1 minute.
 
     @property
     def scheduler(self):
@@ -88,25 +107,19 @@ class DRMAACluster(object):
             pass
 
     def jobStatus(self, jid):
-        """Return the status of job 'jid' as a string instead of a drmaa job state
+        """Return the DRMAA job status object.
+        This hold stuff like start time, wall clock limit, job requirements, etc. as attributes
+        This is a simple wrapper for the DRMAA library, and matches its name
         """
-        status_mapping = {drmaa.JobState.UNDETERMINED: 'UNDETERMINED',
-                          drmaa.JobState.QUEUED_ACTIVE: 'QUEUED_ACTIVE',
-                          drmaa.JobState.SYSTEM_ON_HOLD: 'SYSTEM_ON_HOLD',
-                          drmaa.JobState.USER_ON_HOLD: 'USER_ON_HOLD',
-                          drmaa.JobState.USER_SYSTEM_ON_HOLD: 'USER_SYSTEM_ON_HOLD',
-                          drmaa.JobState.RUNNING: 'RUNNING',
-                          drmaa.JobState.SYSTEM_SUSPENDED: 'SYSTEM_SUSPENDED',
-                          drmaa.JobState.USER_SUSPENDED: 'USER_SUSPENDED',
-                          drmaa.JobState.DONE: 'DONE',
-                          drmaa.JobState.FAILED: 'FAILED'}
-        
-        try:
-            status = self.session.jobStatus(jid)
-        except drmaa.errors.InvalidJobException:
-            return "INVALID_JOB"
+        status = self.session.jobStatus(jid)
+        return status
 
-        return status_mapping.get(status, "INVALID")
+    def startTime(self, jid):
+        """Return a timestamp string of the job start time.
+        This is a simple wrapper for the DRMAA library, and matches its name
+        """
+        status = self.jobStatus(jid)
+        return status.startTime
         
     def __enter__(self):
         return self
@@ -146,6 +159,8 @@ class SGECluster(DRMAACluster):
             args = args + ['--nprocs', '1', '--nthreads', str(cpus)]
             # ns += ' -l TODO=%d' % (cpu + 1)
 
+        ns += ' -l h_rt={}'.format(self.max_runtime)
+        
         wt = self.session.createJobTemplate()
         wt.jobName = self.jobName
         wt.remoteCommand = self.remoteCommand

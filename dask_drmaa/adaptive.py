@@ -9,7 +9,6 @@ from tornado.ioloop import PeriodicCallback
 
 logger = logging.getLogger(__file__)
 
-
 class Adaptive(object):
     '''
     Adaptively allocate workers based on scheduler load.  A superclass.
@@ -43,18 +42,11 @@ class Adaptive(object):
 
     @gen.coroutine
     def _retire_workers(self):
+        """Get the cluster scheduler to cleanup any workers it decides can retire
+        """
         with log_errors():
-            workers = yield self.scheduler.retire_workers(remove=False)
-
-            if workers:
-                logger.info("Retiring workers %s", workers)
-                ids = [self.scheduler.worker_info[w]['name'] for w in workers]
-                f = self.cluster.stop_workers(ids)
-                if gen.is_future(f):
-                    yield f
-
-                for w in workers:
-                    self.scheduler.remove_worker(address=w, safe=True)
+            workers = yield self.scheduler.retire_workers(remove=True)
+            logger.info("Retiring workers {}".format(workers))
 
     @gen.coroutine
     def _adapt(self):
@@ -74,12 +66,12 @@ class Adaptive(object):
                     #We need a worker with more resources. See if one has already been requested.
                     for worker, resources in self.cluster.workers.items():
                         if (resources.get("memory", 0) >= memory * 2 and
-                            self.cluster.jobStatus(worker) in ('QUEUED_ACTIVE', 'RUNNING')):
+                            self.cluster.jobStatus(worker) in ('running', 'queued_active')):
                                 #There is already an existing valid worker requested with the necessary
                                 #  resources to run this task. If the worker has any other status (like DONE, HOLD, etc.), scheduler another task.
                                 break
                     else:
-                        logger.info("Starting worker")
+                        logger.info("Starting worker for unrunnable {}".format(key))
                         self.cluster.start_workers(1, memory=memory * 2)
 
                 yield self._retire_workers()

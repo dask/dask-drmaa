@@ -1,1 +1,2 @@
-from .core import DRMAACluster, SGECluster
+from .core import DRMAACluster
+from .sge import SGECluster

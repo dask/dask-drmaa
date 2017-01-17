@@ -12,6 +12,15 @@ from distributed.utils import log_errors
 logger = logging.getLogger(__name__)
 
 
+_global_session = [None]
+
+def get_session():
+    if not _global_session[0]:
+        _global_session[0] = drmaa.Session()
+        _global_session[0].initialize()
+    return _global_session[0]
+
+
 class DRMAACluster(object):
     def __init__(self,
                  jobName='dask-worker',
@@ -38,8 +47,6 @@ class DRMAACluster(object):
         """
         logger.info("Start local scheduler")
         self.local_cluster = LocalCluster(n_workers=0, **kwargs)
-        self.session = drmaa.Session()
-        self.session.initialize()
         logger.info("Initialize connection to job scheduler")
 
         self.jobName = jobName
@@ -67,7 +74,7 @@ class DRMAACluster(object):
         return self.scheduler.address
 
     def createJobTemplate(self, nativeSpecification=''):
-        wt = self.session.createJobTemplate()
+        wt = get_session().createJobTemplate()
         wt.jobName = self.jobName
         wt.remoteCommand = self.remoteCommand
         wt.args = self.args
@@ -80,7 +87,7 @@ class DRMAACluster(object):
         with log_errors():
             wt = self.createJobTemplate(**kwargs)
 
-            ids = self.session.runBulkJobs(wt, 1, n, 1)
+            ids = get_session().runBulkJobs(wt, 1, n, 1)
             logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
             self.workers.update({jid: kwargs for jid in ids})
 
@@ -88,30 +95,26 @@ class DRMAACluster(object):
         worker_ids = list(worker_ids)
         for wid in worker_ids:
             try:
-                self.session.control(wid, drmaa.JobControlAction.TERMINATE)
+                get_session().control(wid, drmaa.JobControlAction.TERMINATE)
             except drmaa.errors.InvalidJobException:
                 pass
             self.workers.pop(wid)
 
         logger.info("Stop workers %s", worker_ids)
         if sync:
-            self.session.synchronize(worker_ids, dispose=True)
+            get_session().synchronize(worker_ids, dispose=True)
 
     def close(self):
         self.local_cluster.close()
         if self.workers:
             self.stop_workers(self.workers, sync=True)
-        try:
-            self.session.exit()
-        except drmaa.errors.NoActiveSessionException:
-            pass
 
     def jobStatus(self, jid):
         """Return the DRMAA job status object.
         This hold stuff like start time, wall clock limit, job requirements, etc. as attributes
         This is a simple wrapper for the DRMAA library, and matches its name
         """
-        status = self.session.jobStatus(jid)
+        status = get_session().jobStatus(jid)
         return status
 
     def startTime(self, jid):
@@ -129,7 +132,7 @@ class DRMAACluster(object):
 
     def cleanup_closed_workers(self):
         for jid in list(self.workers):
-            if self.session.jobStatus(jid) == 'closed':
+            if get_session().jobStatus(jid) == 'closed':
                 del self.workers[jid]
 
     def __del__(self):
@@ -166,7 +169,7 @@ class SGECluster(DRMAACluster):
 
         ns += ' -l h_rt={}'.format(self.max_runtime)
 
-        wt = self.session.createJobTemplate()
+        wt = get_session().createJobTemplate()
         wt.jobName = self.jobName
         wt.remoteCommand = self.remoteCommand
         wt.args = args

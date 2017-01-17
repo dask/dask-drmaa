@@ -4,7 +4,7 @@ import pytest
 
 from dask_drmaa import DRMAACluster, SGECluster
 from distributed import Client
-from distributed.utils_test import loop
+from distributed.utils_test import loop, inc
 
 
 def test_simple(loop):
@@ -66,3 +66,17 @@ def test_job_name_as_name(loop):
 
             assert all('job' not in name.lower() for name in names)
             assert all('drmaa' not in name.lower() for name in names)
+
+
+def test_multiple_overlapping_clusters(loop):
+    with DRMAACluster(scheduler_port=0) as cluster_1:
+        cluster_1.start_workers(1)
+        with Client(cluster_1, loop=loop) as client_1:
+            with DRMAACluster(scheduler_port=0) as cluster_2:
+                cluster_2.start_workers(1)
+                with Client(cluster_2, loop=loop) as client_2:
+                    future_1 = client_1.submit(inc, 1)
+                    future_2 = client_2.submit(inc, 2)
+
+                    assert future_1.result() == 2
+                    assert future_2.result() == 3

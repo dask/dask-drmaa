@@ -39,3 +39,17 @@ def test_adaptive_normal_tasks(loop):
         with Client(cluster, loop=loop) as client:
             future = client.submit(inc, 1)
             assert future.result() == 2
+
+
+@pytest.mark.parametrize('interval', [50, 1000])
+def test_dont_over_request(loop, interval):
+    with SGECluster(scheduler_port=0) as cluster:
+        adapt = Adaptive(cluster=cluster)
+        with Client(cluster, loop=loop) as client:
+            future = client.submit(inc, 1)
+            assert future.result() == 2
+            assert len(cluster.scheduler.workers) == 1
+
+            for i in range(5):
+                sleep(0.2)
+                assert len(cluster.scheduler.workers) == 1

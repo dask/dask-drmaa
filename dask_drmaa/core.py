@@ -54,7 +54,7 @@ class DRMAACluster(object):
 
         Examples
         --------
-        >>> from dask_drmas import DRMAACluster          # doctest: +SKIP
+        >>> from dask_drmaa import DRMAACluster          # doctest: +SKIP
         >>> cluster = DRMAACluster()                     # doctest: +SKIP
         >>> cluster.start_workers(10)                    # doctest: +SKIP
 

@@ -71,6 +71,9 @@ class Adaptive(object):
                     if any(get_session().jobStatus(jid) == 'queued_active' for
                             jid in self.cluster.workers):  # TODO: is this slow?
                         return
+                    if len(s.workers) < len(self.cluster.workers):
+                        # TODO: this depends on reliable cleanup of closed workers
+                        return
                 if s.unrunnable:
                     duration = 0
                     memory = []
@@ -81,19 +84,13 @@ class Adaptive(object):
                             if m:
                                 memory.append(m)
 
-                    # Here we should be clever about choosing the right suite
-                    # of workers to request.  Instead we just request one with
-                    # memory to cover the largest task.  But only if there are
-                    # no other reequests in flight.
-
-
                     if memory:
                         workers = self.cluster.start_workers(1, memory=max(memory) * 2)
                     else:
                         workers = self.cluster.start_workers(1)
                     logger.info("Starting workers due to resource constraints: %s", workers)
 
-                if busy:
+                if busy and not s.idle:
                     workers = self.cluster.start_workers(len(busy))
                     logger.info("Starting workers due to over-saturation: %s", workers)
 

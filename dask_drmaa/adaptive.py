@@ -64,19 +64,29 @@ class Adaptive(object):
             self._adapting = True
             try:
                 if s.unrunnable:
-                    key = first(s.unrunnable)
-                    memory = s.resource_restrictions[key]['memory']
+                    duration = 0
+                    memory = []
+                    for key in s.unrunnable:
+                        duration += s.task_duration.get(key, 0.1)
+                        if key in s.resource_restrictions:
+                            m = s.resource_restrictions[key].get('memory')
+                            if m:
+                                memory.append(m)
 
-                    #  We need a worker with more resources. See if one has already been requested.
-                    for worker, resources in self.cluster.workers.items():
-                        if (resources.get("memory", 0) >= memory * 2 and
-                            get_session().jobStatus(worker) in ('running', 'queued_active')):
-                                #There is already an existing valid worker requested with the necessary
-                                #  resources to run this task. If the worker has any other status (like DONE, HOLD, etc.), scheduler another task.
-                                break
+                    # Here we should be clever about choosing the right suite
+                    # of workers to request.  Instead we just request one with
+                    # memory to cover the largest task.  But only if there are
+                    # no other reequests in flight.
+
+                    if any(get_session().jobStatus(jid) == 'queued_active' for
+                            jid in self.cluster.workers):  # TODO: is this slow?
+                        return
+
+                    logger.info("Starting worker")
+                    if memory:
+                        self.cluster.start_workers(1, memory=max(memory) * 2)
                     else:
-                        logger.info("Starting worker for unrunnable {}".format(key))
-                        self.cluster.start_workers(1, memory=memory * 2)
+                        self.cluster.start_workers(1)
 
                 yield self._retire_workers()
             finally:

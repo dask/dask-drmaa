@@ -25,9 +25,17 @@ def test_adaptive_memory(loop):
                 sleep(0.3)
                 assert time() < start + 10
 
-            """ # TODO: jobs aren't shutting down when process ends
+            """ # TODO: jobs aren't shutting down when process endst
             start = time()
             while cluster.workers:
                 sleep(0.1)
                 assert time() < start + 60
             """
+
+
+def test_adaptive_normal_tasks(loop):
+    with SGECluster(scheduler_port=0) as cluster:
+        adapt = Adaptive(cluster=cluster)
+        with Client(cluster, loop=loop) as client:
+            future = client.submit(inc, 1)
+            assert future.result() == 2

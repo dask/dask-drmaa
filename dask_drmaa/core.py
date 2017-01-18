@@ -31,6 +31,7 @@ class DRMAACluster(object):
                  workingDirectory = os.getcwd(),
                  nativeSpecification='',
                  max_runtime='1:00:00', #1 hour
+                 cleanup_interval=1000,
                  **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
@@ -79,9 +80,9 @@ class DRMAACluster(object):
         self.max_runtime = max_runtime
 
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
-                                                  callback_time=1000,
+                                                  callback_time=cleanup_interval,
                                                   io_loop=self.scheduler.loop)
-        # self._cleanup_callback.start()
+        self._cleanup_callback.start()
 
         self.workers = {}  # {job-id: {'resource': quanitty}}
 
@@ -138,7 +139,7 @@ class DRMAACluster(object):
 
     def cleanup_closed_workers(self):
         for jid in list(self.workers):
-            if get_session().jobStatus(jid) == 'closed':
+            if get_session().jobStatus(jid) in ('closed', 'done'):
                 logger.info("Removing closed worker %s", jid)
                 del self.workers[jid]
 

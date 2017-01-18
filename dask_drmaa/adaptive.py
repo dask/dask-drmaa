@@ -50,7 +50,7 @@ class Adaptive(object):
         Get the cluster scheduler to cleanup any workers it decides can retire
         """
         with log_errors():
-            workers = yield self.scheduler.retire_workers(remove=True, close=True)
+            workers = yield self.scheduler.retire_workers(close=True)
             logger.info("Retiring workers {}".format(workers))
 
     @gen.coroutine

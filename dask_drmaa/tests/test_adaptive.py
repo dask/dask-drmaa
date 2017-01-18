@@ -1,6 +1,7 @@
 from time import sleep, time
 
 import pytest
+from toolz import first
 
 from dask_drmaa import SGECluster
 from dask_drmaa.adaptive import Adaptive
@@ -59,6 +60,48 @@ def test_request_more_than_one(loop):
     with SGECluster(scheduler_port=0) as cluster:
         adapt = Adaptive(cluster=cluster)
         with Client(cluster, loop=loop) as client:
-            futures = client.map(slowinc, range(10000), delay=0.2)
+            futures = client.map(slowinc, range(1000), delay=0.2)
             while len(cluster.scheduler.workers) < 3:
                 sleep(0.1)
+
+
+def test_dont_request_if_idle(loop):
+    with SGECluster(scheduler_port=0) as cluster:
+        cluster.start_workers(1)
+        with Client(cluster, loop=loop) as client:
+            while not cluster.scheduler.workers:
+                sleep(0.1)
+            futures = client.map(slowinc, range(1000), delay=0.2,
+                                 workers=first(cluster.scheduler.workers))
+            adapt = Adaptive(cluster=cluster, interval=2000)
+
+            for i in range(60):
+                sleep(0.1)
+                assert len(cluster.workers) < 5
+
+
+def test_dont_request_if_not_enough_tasks(loop):
+    with SGECluster(scheduler_port=0) as cluster:
+        adapt = Adaptive(cluster=cluster)
+        with Client(cluster, loop=loop) as client:
+            cluster.scheduler.task_duration['slowinc'] = 1000
+            future = client.submit(slowinc, 1, delay=1000)
+
+            for i in range(50):
+                sleep(0.1)
+                assert len(cluster.workers) < 2
+
+
+def test_dont_request_on_many_short_tasks(loop):
+    with SGECluster(scheduler_port=0) as cluster:
+        adapt = Adaptive(cluster=cluster, interval=50, startup_cost=10)
+        with Client(cluster, loop=loop) as client:
+            cluster.scheduler.task_duration['slowinc'] = 0.001
+            futures = client.map(slowinc, range(1000), delay=0.001)
+
+            while not cluster.scheduler.workers:
+                sleep(0.01)
+
+            for i in range(20):
+                sleep(0.1)
+                assert len(cluster.workers) < 2

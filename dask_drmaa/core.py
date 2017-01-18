@@ -61,7 +61,7 @@ class DRMAACluster(object):
         >>> from distributed import Client               # doctest: +SKIP
         >>> client = Client(cluster)                     # doctest: +SKIP
 
-        >>> future = client.submit(lanbda x: x + 1, 10)  # doctest: +SKIP
+        >>> future = client.submit(lambda x: x + 1, 10)  # doctest: +SKIP
         >>> future.result()                              # doctest: +SKIP
         11
         """

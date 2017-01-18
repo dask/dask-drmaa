@@ -54,14 +54,14 @@ class DRMAACluster(object):
 
         Examples
         --------
-        >>> from dask_drmas import DRMAACluster          # doctest: +SKIP
+        >>> from dask_drmaa import DRMAACluster          # doctest: +SKIP
         >>> cluster = DRMAACluster()                     # doctest: +SKIP
         >>> cluster.start_workers(10)                    # doctest: +SKIP
 
         >>> from distributed import Client               # doctest: +SKIP
         >>> client = Client(cluster)                     # doctest: +SKIP
 
-        >>> future = client.submit(lanbda x: x + 1, 10)  # doctest: +SKIP
+        >>> future = client.submit(lambda x: x + 1, 10)  # doctest: +SKIP
         >>> future.result()                              # doctest: +SKIP
         11
         """

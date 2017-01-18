@@ -7,7 +7,7 @@ import drmaa
 from tornado.ioloop import PeriodicCallback
 
 from distributed import LocalCluster
-from distributed.utils import log_errors
+from distributed.utils import log_errors, ignoring
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +111,7 @@ class DRMAACluster(object):
             ids = get_session().runBulkJobs(wt, 1, n, 1)
             logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
             self.workers.update({jid: kwargs for jid in ids})
+            global_workers.update(ids)
 
     def stop_workers(self, worker_ids, sync=False):
         worker_ids = list(worker_ids)
@@ -120,6 +121,9 @@ class DRMAACluster(object):
             except drmaa.errors.InvalidJobException:
                 pass
             self.workers.pop(wid)
+
+            with ignoring(KeyError):
+                global_workers.remove(wid)
 
         logger.info("Stop workers %s", worker_ids)
         if sync:
@@ -153,3 +157,21 @@ class DRMAACluster(object):
         return "<%s: %d workers>" % (self.__class__.__name__, len(self.workers))
 
     __repr__ = __str__
+
+
+global_workers = set()
+
+
+def remove_workers():
+    if not get_session():
+        return
+
+    for wid in global_workers:
+        try:
+            get_session().control(wid, drmaa.JobControlAction.TERMINATE)
+        except drmaa.errors.InvalidJobException:
+            pass
+
+
+import atexit
+atexit.register(remove_workers)

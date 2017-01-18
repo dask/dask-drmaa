@@ -64,6 +64,13 @@ class Adaptive(object):
 
             self._adapting = True
             try:
+                busy = {w for w in s.workers
+                          if len(s.processing[w]) > 2 * s.ncores[w]
+                          and s.occupancy[w] > self.startup_cost * 2}
+                if s.unrunnable or busy:
+                    if any(get_session().jobStatus(jid) == 'queued_active' for
+                            jid in self.cluster.workers):  # TODO: is this slow?
+                        return
                 if s.unrunnable:
                     duration = 0
                     memory = []
@@ -79,15 +86,16 @@ class Adaptive(object):
                     # memory to cover the largest task.  But only if there are
                     # no other reequests in flight.
 
-                    if any(get_session().jobStatus(jid) == 'queued_active' for
-                            jid in self.cluster.workers):  # TODO: is this slow?
-                        return
 
-                    logger.info("Starting worker")
                     if memory:
-                        self.cluster.start_workers(1, memory=max(memory) * 2)
+                        workers = self.cluster.start_workers(1, memory=max(memory) * 2)
                     else:
-                        self.cluster.start_workers(1)
+                        workers = self.cluster.start_workers(1)
+                    logger.info("Starting workers due to resource constraints: %s", workers)
+
+                if busy:
+                    workers = self.cluster.start_workers(len(busy))
+                    logger.info("Starting workers due to over-saturation: %s", workers)
 
                 yield self._retire_workers()
             finally:

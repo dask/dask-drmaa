@@ -5,7 +5,7 @@ import pytest
 from dask_drmaa import SGECluster
 from dask_drmaa.adaptive import Adaptive
 from distributed import Client
-from distributed.utils_test import loop, inc
+from distributed.utils_test import loop, inc, slowinc
 
 
 def test_adaptive_memory(loop):
@@ -53,3 +53,12 @@ def test_dont_over_request(loop, interval):
             for i in range(5):
                 sleep(0.2)
                 assert len(cluster.scheduler.workers) == 1
+
+
+def test_request_more_than_one(loop):
+    with SGECluster(scheduler_port=0) as cluster:
+        adapt = Adaptive(cluster=cluster)
+        with Client(cluster, loop=loop) as client:
+            futures = client.map(slowinc, range(10000), delay=0.2)
+            while len(cluster.scheduler.workers) < 3:
+                sleep(0.1)

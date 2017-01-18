@@ -10,7 +10,7 @@ from distributed.utils_test import loop, inc, slowinc
 
 
 def test_adaptive_memory(loop):
-    with SGECluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0, cleanup_interval=100) as cluster:
         adapt = Adaptive(cluster=cluster)
         with Client(cluster, loop=loop) as client:
             future = client.submit(inc, 1, resources={'memory': 1e9})
@@ -26,12 +26,10 @@ def test_adaptive_memory(loop):
                 sleep(0.3)
                 assert time() < start + 10
 
-            """ # TODO: jobs aren't shutting down when process endst
             start = time()
             while cluster.workers:
                 sleep(0.1)
-                assert time() < start + 60
-            """
+                assert time() < start + 10
 
 
 def test_adaptive_normal_tasks(loop):

@@ -113,6 +113,7 @@ class DRMAACluster(object):
     def stop_workers(self, worker_ids, sync=False):
         if isinstance(worker_ids, str):
             worker_ids = [worker_ids]
+
         for wid in list(worker_ids):
             try:
                 get_session().control(wid, drmaa.JobControlAction.TERMINATE)

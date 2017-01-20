@@ -58,3 +58,19 @@ def test_multiple_overlapping_clusters(loop):
 
                     assert future_1.result() == 2
                     assert future_2.result() == 3
+
+
+def test_stop_single_worker(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        with Client(cluster, loop=loop) as client:
+            cluster.start_workers(2)
+            future = client.submit(lambda x: x + 1, 1)
+            assert future.result() == 2
+
+            a, b = cluster.workers
+            cluster.stop_workers(a)
+
+            start = time()
+            while len(client.ncores()) != 1:
+                sleep(0.2)
+                assert time() < start + 60

@@ -4,7 +4,7 @@ from .core import DRMAACluster, get_session
 class SGECluster(DRMAACluster):
     default_memory = None
 
-    def createJobTemplate(self, nativeSpecification='', cpus=1, memory=None,
+    def create_job_template(self, nativeSpecification='', cpus=1, memory=None,
             memory_fraction=0.5):
         memory = memory or self.default_memory
         template = self.template.copy()

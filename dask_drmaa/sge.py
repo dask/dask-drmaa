@@ -3,32 +3,36 @@ from .core import DRMAACluster, get_session
 
 class SGECluster(DRMAACluster):
     default_memory = None
-    default_memory_fraction = 0.6
-    def createJobTemplate(self, nativeSpecification='', cpus=1, memory=None,
-            memory_fraction=None):
-        memory = memory or self.default_memory
-        memory_fraction = memory_fraction or self.default_memory_fraction
 
-        args = self.args
-        ns = self.nativeSpecification
+    def createJobTemplate(self, nativeSpecification='', cpus=1, memory=None,
+            memory_fraction=0.5):
+        memory = memory or self.default_memory
+        template = self.template.copy()
+
+        ns = template['nativeSpecification']
+        args = template['args']
+
+        args = [self.scheduler_address] + template['args']
+
         if nativeSpecification:
             ns = ns + nativeSpecification
         if memory:
-            args = args + ['--memory-limit', str(memory * memory_fraction)]
-            args = args + ['--resources', 'memory=%f' % (memory * 0.8)]
+            args = args + ['--memory-limit', str(memory * (1 - memory_fraction))]
+            args = args + ['--resources', 'memory=%f' % (memory * memory_fraction)]
             ns += ' -l h_vmem=%dG' % int(memory / 1e9) # / cpus
         if cpus:
             args = args + ['--nprocs', '1', '--nthreads', str(cpus)]
             # ns += ' -l TODO=%d' % (cpu + 1)
 
-        ns += ' -l h_rt={}'.format(self.max_runtime)
+        template['nativeSpecification'] = ns
+        template['args'] = args
 
-        wt = get_session().createJobTemplate()
-        wt.jobName = self.jobName
-        wt.remoteCommand = self.remoteCommand
-        wt.args = args
-        wt.outputPath = self.outputPath
-        wt.errorPath = self.errorPath
-        wt.nativeSpecification = ns
+        jt = get_session().createJobTemplate()
+        valid_attributes = dir(jt)
 
-        return wt
+        for key, value in template.items():
+            if key not in valid_attributes:
+                raise ValueError("Invalid job template attribute %s" % key)
+            setattr(jt, key, value)
+
+        return jt

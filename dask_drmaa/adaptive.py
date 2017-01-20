@@ -32,7 +32,7 @@ class Adaptive(object):
     ...     def scale_down(self, workers):
     ...        """ Remove worker addresses from cluster """
     '''
-    def __init__(self, scheduler=None, cluster=None, interval=1000, startup_cost=1):
+    def __init__(self, cluster=None, scheduler=None, interval=1000, startup_cost=1):
         self.cluster = cluster
         if scheduler is None:
             scheduler = cluster.scheduler

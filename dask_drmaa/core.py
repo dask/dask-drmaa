@@ -87,7 +87,7 @@ class DRMAACluster(object):
     def scheduler_address(self):
         return '%s:%d' % (self.hostname, self.scheduler.port)
 
-    def createJobTemplate(self, **kwargs):
+    def create_job_template(self, **kwargs):
         template = self.template.copy()
         if kwargs:
             template.update(kwargs)
@@ -105,7 +105,7 @@ class DRMAACluster(object):
 
     def start_workers(self, n=1, **kwargs):
         with log_errors():
-            with self.createJobTemplate(**kwargs) as jt:
+            with self.create_job_template(**kwargs) as jt:
                 ids = get_session().runBulkJobs(jt, 1, n, 1)
                 logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
                 self.workers.update({jid: kwargs for jid in ids})

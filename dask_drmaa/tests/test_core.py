@@ -74,3 +74,21 @@ def test_stop_single_worker(loop):
             while len(client.ncores()) != 1:
                 sleep(0.2)
                 assert time() < start + 60
+
+
+@pytest.mark.xfail(reason="Need mapping from worker addresses to job ids")
+def test_stop_workers_politely(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        with Client(cluster, loop=loop) as client:
+            cluster.start_workers(2)
+
+            while len(client.ncores()) < 2:
+                sleep(0.1)
+
+            futures = client.scatter(list(range(10)))
+
+            a, b = cluster.workers
+            cluster.stop_workers(a)
+
+            data = client.gather(futures)
+            assert data == list(range(10))

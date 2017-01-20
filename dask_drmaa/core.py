@@ -111,8 +111,9 @@ class DRMAACluster(object):
                 self.workers.update({jid: kwargs for jid in ids})
 
     def stop_workers(self, worker_ids, sync=False):
-        worker_ids = list(worker_ids)
-        for wid in worker_ids:
+        if isinstance(worker_ids, str):
+            worker_ids = [worker_ids]
+        for wid in list(worker_ids):
             try:
                 get_session().control(wid, drmaa.JobControlAction.TERMINATE)
             except drmaa.errors.InvalidJobException:

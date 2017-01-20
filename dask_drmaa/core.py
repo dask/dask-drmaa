@@ -4,6 +4,7 @@ import socket
 import sys
 
 import drmaa
+from toolz import merge
 from tornado.ioloop import PeriodicCallback
 
 from distributed import LocalCluster
@@ -21,18 +22,19 @@ def get_session():
     return _global_session[0]
 
 
+default_template = {
+    'remoteCommand': os.path.join(sys.exec_prefix, 'bin', 'dask-worker'),
+    'jobName': 'dask-worker',
+    'outputPath': ':%s/out' % os.getcwd(),
+    'errorPath': ':%s/err' % os.getcwd(),
+    'workingDirectory': os.getcwd(),
+    'nativeSpecification': '',
+    'args': []
+    }
+
+
 class DRMAACluster(object):
-    def __init__(self,
-                 jobName='dask-worker',
-                 remoteCommand=os.path.join(sys.exec_prefix, 'bin', 'dask-worker'),
-                 args=(),
-                 outputPath=':%s/out' % os.getcwd(),
-                 errorPath=':%s/err' % os.getcwd(),
-                 workingDirectory = os.getcwd(),
-                 nativeSpecification='',
-                 max_runtime='1:00:00', #1 hour
-                 cleanup_interval=1000,
-                 **kwargs):
+    def __init__(self, template=None, cleanup_interval=1000, hostname=None, **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
 
@@ -50,8 +52,6 @@ class DRMAACluster(object):
             Where dask-worker runs, defaults to current directory
         nativeSpecification: string
             Options native to the job scheduler
-        max_runtime: string
-            Maximum runtime of worker jobs in format ``"HH:MM:SS"``
 
         Examples
         --------
@@ -66,18 +66,11 @@ class DRMAACluster(object):
         >>> future.result()                              # doctest: +SKIP
         11
         """
-        logger.info("Start local scheduler")
+        self.hostname = hostname or socket.gethostname()
+        logger.info("Start local scheduler at %s", self.hostname)
         self.local_cluster = LocalCluster(n_workers=0, **kwargs)
-        logger.info("Initialize connection to job scheduler")
 
-        self.jobName = jobName
-        self.remoteCommand = remoteCommand
-        self.args = ['%s:%d' % (socket.gethostname(),
-                     self.local_cluster.scheduler.port)] + list(args)
-        self.outputPath = outputPath
-        self.errorPath = errorPath
-        self.nativeSpecification = nativeSpecification
-        self.max_runtime = max_runtime
+        self.template = merge(default_template, template or {})
 
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
                                                   callback_time=cleanup_interval,
@@ -92,26 +85,31 @@ class DRMAACluster(object):
 
     @property
     def scheduler_address(self):
-        return self.scheduler.address
+        return '%s:%d' % (self.hostname, self.scheduler.port)
 
-    def createJobTemplate(self, nativeSpecification=''):
-        wt = get_session().createJobTemplate()
-        wt.jobName = self.jobName
-        wt.remoteCommand = self.remoteCommand
-        wt.args = self.args
-        wt.outputPath = self.outputPath
-        wt.errorPath = self.errorPath
-        wt.nativeSpecification = self.nativeSpecification + ' ' + nativeSpecification
-        return wt
+    def createJobTemplate(self, **kwargs):
+        template = self.template.copy()
+        if kwargs:
+            template.update(kwargs)
+        template['args'] = [self.scheduler_address] + template['args']
+
+        jt = get_session().createJobTemplate()
+        valid_attributes = dir(jt)
+
+        for key, value in template.items():
+            if key not in valid_attributes:
+                raise ValueError("Invalid job template attribute %s" % key)
+            setattr(jt, key, value)
+
+        return jt
 
     def start_workers(self, n=1, **kwargs):
         with log_errors():
-            wt = self.createJobTemplate(**kwargs)
-
-            ids = get_session().runBulkJobs(wt, 1, n, 1)
-            logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
-            self.workers.update({jid: kwargs for jid in ids})
-            global_workers.update(ids)
+            with self.createJobTemplate(**kwargs) as jt:
+                ids = get_session().runBulkJobs(jt, 1, n, 1)
+                logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
+                self.workers.update({jid: kwargs for jid in ids})
+                global_workers.update(ids)
 
     def stop_workers(self, worker_ids, sync=False):
         worker_ids = list(worker_ids)

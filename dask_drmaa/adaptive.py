@@ -85,7 +85,7 @@ class Adaptive(object):
                                 memory.append(m)
 
                     if memory:
-                        workers = self.cluster.start_workers(1, memory=max(memory) * 2)
+                        workers = self.cluster.start_workers(1, memory=max(memory) * 4)
                     else:
                         workers = self.cluster.start_workers(1)
                     logger.info("Starting workers due to resource constraints: %s", workers)

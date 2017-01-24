@@ -2,6 +2,7 @@ import logging
 import os
 import socket
 import sys
+import tempfile
 
 import drmaa
 from toolz import merge
@@ -22,8 +23,10 @@ def get_session():
     return _global_session[0]
 
 
+worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
+
+
 default_template = {
-    'remoteCommand': os.path.join(sys.exec_prefix, 'bin', 'dask-worker'),
     'jobName': 'dask-worker',
     'outputPath': ':%s/out' % os.getcwd(),
     'errorPath': ':%s/err' % os.getcwd(),
@@ -33,8 +36,15 @@ default_template = {
     }
 
 
+script_template = ("""
+#!/bin/bash
+%s $1 --name $JOB_ID.$SGE_TASK_ID "${@:2}"
+""" % worker_bin_path).strip()
+
+
 class DRMAACluster(object):
-    def __init__(self, template=None, cleanup_interval=1000, hostname=None, **kwargs):
+    def __init__(self, template=None, cleanup_interval=1000, hostname=None,
+                 script=None, **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
 
@@ -42,8 +52,9 @@ class DRMAACluster(object):
         ----------
         jobName: string
             Name of the job as known by the DRMAA cluster.
-        remoteCommand: string
-            Path to the dask-worker executable
+        script: string (optional)
+            Path to the dask-worker executable script.
+            A temporary file will be made if none is provided (recommended)
         args: list
             Extra string arguments to pass to dask-worker
         outputPath: string
@@ -70,7 +81,20 @@ class DRMAACluster(object):
         logger.info("Start local scheduler at %s", self.hostname)
         self.local_cluster = LocalCluster(n_workers=0, **kwargs)
 
-        self.template = merge(default_template, template or {})
+        if script is None:
+            self.script = tempfile.mktemp(suffix='sh',
+                                          prefix='dask-worker-script',
+                                          dir=os.path.curdir)
+            with open(self.script, 'wt') as f:
+                f.write(script_template)
+
+            os.chmod(self.script, 0o777)
+
+        # TODO: check that user-provided script is executable
+
+        self.template = merge(default_template,
+                              {'remoteCommand': self.script},
+                              template or {})
 
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
                                                   callback_time=cleanup_interval,
@@ -130,6 +154,9 @@ class DRMAACluster(object):
         self.local_cluster.close()
         if self.workers:
             self.stop_workers(self.workers, sync=True)
+
+        if os.path.exists(self.script):
+            os.remove(self.script)
 
     def __enter__(self):
         return self

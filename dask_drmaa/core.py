@@ -25,6 +25,9 @@ def get_session():
 
 worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 
+# All JOB_ID and TASK_ID environment variables
+JOB_ID = "$JOB_ID$SLURM_JOB_ID$LSB_JOBID"
+TASK_ID = "$SGE_TASK_ID$SLURM_ARRAY_TASK_ID$LSB_JOBINDEX"
 
 default_template = {
     'jobName': 'dask-worker',
@@ -38,8 +41,8 @@ default_template = {
 
 script_template = ("""
 #!/bin/bash
-%s $1 --name $JOB_ID.$SGE_TASK_ID "${@:2}"
-""" % worker_bin_path).strip()
+%s $1 --name %s.%s "${@:2}"
+""" % (worker_bin_path, JOB_ID, TASK_ID)).strip()
 
 
 class DRMAACluster(object):

@@ -95,3 +95,29 @@ def test_stop_workers_politely(loop):
 
             data = client.gather(futures)
             assert data == list(range(10))
+
+
+def test_logs(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        cluster.start_workers(2)
+        while len(cluster.scheduler.workers) < 2:
+            sleep(0.1)
+
+        for w in cluster.workers:
+            fn = 'worker.%s.err' % w
+            assert os.path.exists(fn)
+            with open(fn) as f:
+                assert "worker" in f.read()
+
+
+def test_cleanup():
+    def cleanup_logs():
+        from glob import glob
+        import os
+        for fn in glob('worker.*.out'):
+            os.remove(fn)
+        for fn in glob('worker.*.err'):
+            os.remove(fn)
+
+    import atexit
+    atexit.register(cleanup_logs)

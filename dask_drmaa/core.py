@@ -31,8 +31,8 @@ TASK_ID = "$SGE_TASK_ID$SLURM_ARRAY_TASK_ID$LSB_JOBINDEX"
 
 default_template = {
     'jobName': 'dask-worker',
-    'outputPath': ':%s/out' % os.getcwd(),
-    'errorPath': ':%s/err' % os.getcwd(),
+    'outputPath': ':%s/worker.$JOB_ID.$drmaa_incr_ph$.out' % os.getcwd(),
+    'errorPath': ':%s/worker.$JOB_ID.$drmaa_incr_ph$.err' % os.getcwd(),
     'workingDirectory': os.getcwd(),
     'nativeSpecification': '',
     'args': []

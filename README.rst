@@ -67,6 +67,47 @@ And run tests with py.test in the master docker container
   docker exec -it sge_master py.test dask-drmaa/dask_drmaa --verbose
 
 
+Adaptive Load
+-------------
+
+Dask-drmaa can adapt to scheduler load, deploying more workers on the grid when
+it has more work, and cleaning up these workers when they are no longer
+necessary.  This can simplify setup (you can just leave a cluster running) and
+it can reduce load on the cluster, making IT happy.
+
+To enable this, call the ``Adaptive`` class on a ``DRMAACluster``.  You can
+submit computations to the cluster without ever explicitly creating workers.
+
+.. code-block:: python
+
+   from dask_drmaa import DRMAACluster, Adaptive
+   from dask.distributed import Client
+
+   cluster = DRMAACluster()
+   adapt = Adaptive(cluster)
+   client = Client(cluster)
+
+   futures = client.map(func, seq)  # workers will be created as necessary
+
+
+Extensible
+----------
+
+The DRMAA interface is the lowest common denominator among many different job
+schedulers like SGE, SLURM, LSF, Torque, and others.  However, sometimes users
+need to specify parameters particular to their cluster, such as resource
+queues, wall times, memory constraints, etc..
+
+DRMAA allows users to pass native specifications either when constructing the
+cluster or when starting new workers:
+
+.. code-block:: python
+
+   cluster = DRMAACluster(template={'nativeSpecification': '-l h_rt=01:00:00'})
+   # or
+   cluster.start_workers(10, nativeSpecification='-l h_rt=01:00:00')
+
+
 Related Work
 ------------
 

@@ -6,6 +6,7 @@ import tempfile
 
 import drmaa
 from toolz import merge
+from tornado import gen
 from tornado.ioloop import PeriodicCallback
 
 from distributed import LocalCluster
@@ -82,7 +83,7 @@ class DRMAACluster(object):
         """
         self.hostname = hostname or socket.gethostname()
         logger.info("Start local scheduler at %s", self.hostname)
-        self.local_cluster = LocalCluster(n_workers=0, **kwargs)
+        self.local_cluster = LocalCluster(n_workers=0, ip='', **kwargs)
 
         if script is None:
             self.script = tempfile.mktemp(suffix='sh',
@@ -106,13 +107,17 @@ class DRMAACluster(object):
 
         self.workers = {}  # {job-id: {'resource': quanitty}}
 
+    @gen.coroutine
+    def _start(self):
+        pass
+
     @property
     def scheduler(self):
         return self.local_cluster.scheduler
 
     @property
     def scheduler_address(self):
-        return '%s:%d' % (self.hostname, self.scheduler.port)
+        return self.scheduler.address
 
     def create_job_template(self, **kwargs):
         template = self.template.copy()

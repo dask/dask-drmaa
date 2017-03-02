@@ -1,3 +1,4 @@
+import os
 from time import sleep, time
 
 import pytest
@@ -23,6 +24,8 @@ def test_simple(loop):
 
             assert not cluster.workers
 
+    assert not os.path.exists(cluster.script)
+
 
 def test_str(loop):
     with DRMAACluster(scheduler_port=0) as cluster:
@@ -34,16 +37,16 @@ def test_str(loop):
         1 + 1
 
 
-@pytest.mark.xfail(reason="Can't use job name environment variable as arg")
 def test_job_name_as_name(loop):
     with DRMAACluster(scheduler_port=0) as cluster:
         cluster.start_workers(2)
-        while len(cluster.scheduler.workers) < 1:
+        while len(cluster.scheduler.workers) < 2:
             sleep(0.1)
-            names = {cluster.scheduler.worker_info[w]['name']
-                     for w in cluster.scheduler.workers}
 
-            assert names == set(cluster.workers)
+        names = {cluster.scheduler.worker_info[w]['name']
+                 for w in cluster.scheduler.workers}
+
+        assert names == set(cluster.workers)
 
 
 def test_multiple_overlapping_clusters(loop):
@@ -92,3 +95,29 @@ def test_stop_workers_politely(loop):
 
             data = client.gather(futures)
             assert data == list(range(10))
+
+
+def test_logs(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        cluster.start_workers(2)
+        while len(cluster.scheduler.workers) < 2:
+            sleep(0.1)
+
+        for w in cluster.workers:
+            fn = 'worker.%s.err' % w
+            assert os.path.exists(fn)
+            with open(fn) as f:
+                assert "worker" in f.read()
+
+
+def test_cleanup():
+    def cleanup_logs():
+        from glob import glob
+        import os
+        for fn in glob('worker.*.out'):
+            os.remove(fn)
+        for fn in glob('worker.*.err'):
+            os.remove(fn)
+
+    import atexit
+    atexit.register(cleanup_logs)

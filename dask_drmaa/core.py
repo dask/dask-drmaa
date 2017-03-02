@@ -2,9 +2,11 @@ import logging
 import os
 import socket
 import sys
+import tempfile
 
 import drmaa
 from toolz import merge
+from tornado import gen
 from tornado.ioloop import PeriodicCallback
 
 from distributed import LocalCluster
@@ -22,19 +24,31 @@ def get_session():
     return _global_session[0]
 
 
+worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
+
+# All JOB_ID and TASK_ID environment variables
+JOB_ID = "$JOB_ID$SLURM_JOB_ID$LSB_JOBID"
+TASK_ID = "$SGE_TASK_ID$SLURM_ARRAY_TASK_ID$LSB_JOBINDEX"
+
 default_template = {
-    'remoteCommand': os.path.join(sys.exec_prefix, 'bin', 'dask-worker'),
     'jobName': 'dask-worker',
-    'outputPath': ':%s/out' % os.getcwd(),
-    'errorPath': ':%s/err' % os.getcwd(),
+    'outputPath': ':%s/worker.$JOB_ID.$drmaa_incr_ph$.out' % os.getcwd(),
+    'errorPath': ':%s/worker.$JOB_ID.$drmaa_incr_ph$.err' % os.getcwd(),
     'workingDirectory': os.getcwd(),
     'nativeSpecification': '',
     'args': []
     }
 
 
+script_template = ("""
+#!/bin/bash
+%s $1 --name %s.%s "${@:2}"
+""" % (worker_bin_path, JOB_ID, TASK_ID)).strip()
+
+
 class DRMAACluster(object):
-    def __init__(self, template=None, cleanup_interval=1000, hostname=None, **kwargs):
+    def __init__(self, template=None, cleanup_interval=1000, hostname=None,
+                 script=None, **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
 
@@ -42,8 +56,9 @@ class DRMAACluster(object):
         ----------
         jobName: string
             Name of the job as known by the DRMAA cluster.
-        remoteCommand: string
-            Path to the dask-worker executable
+        script: string (optional)
+            Path to the dask-worker executable script.
+            A temporary file will be made if none is provided (recommended)
         args: list
             Extra string arguments to pass to dask-worker
         outputPath: string
@@ -68,9 +83,29 @@ class DRMAACluster(object):
         """
         self.hostname = hostname or socket.gethostname()
         logger.info("Start local scheduler at %s", self.hostname)
-        self.local_cluster = LocalCluster(n_workers=0, **kwargs)
+        self.local_cluster = LocalCluster(n_workers=0, ip='', **kwargs)
 
-        self.template = merge(default_template, template or {})
+        if script is None:
+            fn = tempfile.mktemp(suffix='sh',
+                                 prefix='dask-worker-script',
+                                 dir=os.path.curdir)
+            self.script = fn
+
+            with open(fn, 'wt') as f:
+                f.write(script_template)
+
+            @atexit.register
+            def remove_script():
+                if os.path.exists(fn):
+                    os.remove(fn)
+
+            os.chmod(self.script, 0o777)
+
+        # TODO: check that user-provided script is executable
+
+        self.template = merge(default_template,
+                              {'remoteCommand': self.script},
+                              template or {})
 
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
                                                   callback_time=cleanup_interval,
@@ -79,13 +114,17 @@ class DRMAACluster(object):
 
         self.workers = {}  # {job-id: {'resource': quanitty}}
 
+    @gen.coroutine
+    def _start(self):
+        pass
+
     @property
     def scheduler(self):
         return self.local_cluster.scheduler
 
     @property
     def scheduler_address(self):
-        return '%s:%d' % (self.hostname, self.scheduler.port)
+        return self.scheduler.address
 
     def create_job_template(self, **kwargs):
         template = self.template.copy()
@@ -130,6 +169,9 @@ class DRMAACluster(object):
         self.local_cluster.close()
         if self.workers:
             self.stop_workers(self.workers, sync=True)
+
+        if os.path.exists(self.script):
+            os.remove(self.script)
 
     def __enter__(self):
         return self

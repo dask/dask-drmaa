@@ -86,11 +86,18 @@ class DRMAACluster(object):
         self.local_cluster = LocalCluster(n_workers=0, ip='', **kwargs)
 
         if script is None:
-            self.script = tempfile.mktemp(suffix='sh',
-                                          prefix='dask-worker-script',
-                                          dir=os.path.curdir)
-            with open(self.script, 'wt') as f:
+            fn = tempfile.mktemp(suffix='sh',
+                                 prefix='dask-worker-script',
+                                 dir=os.path.curdir)
+            self.script = fn
+
+            with open(fn, 'wt') as f:
                 f.write(script_template)
+
+            @atexit.register
+            def remove_script():
+                if os.path.exists(fn):
+                    os.remove(fn)
 
             os.chmod(self.script, 0o777)
 

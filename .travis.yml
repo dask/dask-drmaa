@@ -41,7 +41,7 @@ install:
 
 script:
   - docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py install"
-  - docker exec -it sge_master py.test dask-drmaa/dask_drmaa --verbose
+  - docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; py.test dask_drmaa --verbose"
 
 after_success:
   - docker exec -it sge_master bash -c 'cat /tmp/sge*'

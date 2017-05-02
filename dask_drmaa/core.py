@@ -100,6 +100,8 @@ class DRMAACluster(object):
                     os.remove(fn)
 
             os.chmod(self.script, 0o777)
+        else:
+            self.script = script
 
         # TODO: check that user-provided script is executable
 

@@ -99,11 +99,10 @@ class DRMAACluster(object):
                 if os.path.exists(fn):
                     os.remove(fn)
 
-            os.chmod(self.script, 0o777)
         else:
-            self.script = script
+            self.script = os.path.abspath(script)
 
-        # TODO: check that user-provided script is executable
+        os.chmod(self.script, 0o777)
 
         self.template = merge(default_template,
                               {'remoteCommand': self.script},

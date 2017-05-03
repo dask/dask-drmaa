@@ -4,6 +4,29 @@ from .core import DRMAACluster, get_session
 class SGECluster(DRMAACluster):
     default_memory = None
 
+    def start_workers(self, n=1, nativeSpecification='', cpus=1, memory=None,
+                      memory_fraction=0.5):
+        '''
+        Start dask workers on an SGE cluster.
+
+        Parameters
+        ----------
+        n: integer
+            Number of dask workers to start
+        nativeSpecification: string (optional)
+            Specify options native to the job scheduler
+        cpus: integer
+            Number of threads per dask worker
+        memory: integer (optional)
+            Number of bytes of RAM per dask worker
+        memory_fraction: float
+            If memory is specified, specify the fraction of memory used
+            before dask workers begin to cache data to disk
+        '''
+        return super(SGECluster, self).start_workers(
+            n=n, nativeSpecification=nativeSpecification, cpus=cpus,
+            memory=memory, memory_fraction=memory_fraction)
+
     def create_job_template(self, nativeSpecification='', cpus=1, memory=None,
             memory_fraction=0.5):
         memory = memory or self.default_memory

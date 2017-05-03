@@ -3,6 +3,7 @@ from time import sleep, time
 
 import pytest
 
+from dask.utils import filetext
 from dask_drmaa import DRMAACluster
 from distributed import Client
 from distributed.utils_test import loop, inc
@@ -121,3 +122,22 @@ def test_cleanup():
 
     import atexit
     atexit.register(cleanup_logs)
+
+
+def test_script(loop):
+    from dask_drmaa.core import script_template
+
+    script_template2 = script_template.replace('--name ', '--name my-worker-')
+
+    with filetext(script_template2, extension='sh', mode='wt') as fn:
+        with DRMAACluster(scheduler_port=0, script=fn) as cluster:
+            assert cluster.script == fn
+            cluster.start_workers(2)
+
+            start = time()
+            while len(cluster.scheduler.workers) < 2:
+                sleep(0.1)
+                assert time() < start + 10
+
+            assert all(info['name'].startswith('my-worker')
+                       for info in cluster.scheduler.worker_info.values())

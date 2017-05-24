@@ -40,15 +40,20 @@ default_template = {
     }
 
 
-script_template = ("""
-#!/bin/bash
-%s $1 --name %s.%s "${@:2}"
-""" % (worker_bin_path, JOB_ID, TASK_ID)).strip()
+def make_job_script(executable, name, preexec=()):
+    shebang = '#!/bin/bash'
+    execute = (
+        '%(executable)s $1 --name %(name)s "${@:2}"'
+        % dict(executable=executable, name=name)
+        )
+    preparation = list(preexec)
+    script_template = '\n'.join([shebang] + preparation + [execute, ''])
+    return script_template
 
 
 class DRMAACluster(object):
     def __init__(self, template=None, cleanup_interval=1000, hostname=None,
-                 script=None, **kwargs):
+                 script=None, preexec_commands=(), **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
 
@@ -91,8 +96,11 @@ class DRMAACluster(object):
                                  dir=os.path.curdir)
             self.script = fn
 
+            script_contents = make_job_script(executable=worker_bin_path,
+                                              name='%s.%s' % (JOB_ID, TASK_ID),
+                                              preexec=preexec_commands)
             with open(fn, 'wt') as f:
-                f.write(script_template)
+                f.write(script_contents)
 
             @atexit.register
             def remove_script():
@@ -100,6 +108,9 @@ class DRMAACluster(object):
                     os.remove(fn)
 
             os.chmod(self.script, 0o777)
+
+        else:
+            assert not pythonpath, "Cannot specify both script and pythonpath"
 
         # TODO: check that user-provided script is executable
 

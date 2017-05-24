@@ -110,7 +110,7 @@ class DRMAACluster(object):
             os.chmod(self.script, 0o777)
 
         else:
-            assert not pythonpath, "Cannot specify both script and pythonpath"
+            assert not preexec_commands, "Cannot specify both script and preexec_commands"
 
         # TODO: check that user-provided script is executable
 

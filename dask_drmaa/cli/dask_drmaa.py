@@ -13,7 +13,7 @@ from distributed.cli.utils import check_python_3
 @click.command()
 @click.argument('nworkers', type=int)
 def main(nworkers):
-    cluster = DRMAACluster(silence_logs=logging.INFO)
+    cluster = DRMAACluster(silence_logs=logging.INFO, scheduler_port=8786)
     cluster.start_workers(nworkers)
 
     def handle_signal(sig, frame):

@@ -1,5 +1,7 @@
 import os
 from time import sleep, time
+import shutil
+import tempfile
 
 import pytest
 
@@ -35,6 +37,31 @@ def test_str(loop):
         assert '2' in str(cluster)
         assert '2' in repr(cluster)
         1 + 1
+
+
+def test_pythonpath():
+    tmpdir = tempfile.mkdtemp(prefix='test_drmaa_pythonpath_', dir='.')
+    try:
+        with open(os.path.join(tmpdir, "bzzz_unlikely_module_name.py"), "w") as f:
+            f.write("""if 1:
+                def f():
+                    return 5
+                """)
+
+        def func():
+            import bzzz_unlikely_module_name
+            return bzzz_unlikely_module_name.f()
+
+        with DRMAACluster(scheduler_port=0,
+                          preexec_commands=['export PYTHONPATH=%s:PYTHONPATH' % tmpdir],
+                          ) as cluster:
+            with Client(cluster) as client:
+                cluster.start_workers(2)
+                x = client.submit(func)
+                assert x.result() == 5
+
+    finally:
+        shutil.rmtree(tmpdir)
 
 
 def test_job_name_as_name(loop):

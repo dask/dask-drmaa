@@ -1,7 +1,10 @@
+from __future__ import print_function
+
 import os
-from time import sleep, time
 import shutil
+import sys
 import tempfile
+from time import sleep, time
 
 import pytest
 
@@ -137,7 +140,35 @@ def test_logs(loop):
                 assert "worker" in f.read()
 
 
+def test_stdout_in_worker():
+    """
+    stdout and stderr should be redirected and line-buffered in workers.
+    """
+    def inc_and_print(x):
+        print("stdout: inc_and_print(%s)" % (x,))
+        print("stderr: inc_and_print(%s)" % (x,), file=sys.stderr)
+        return x + 1
+
+    def get_lines(fn):
+        with open(fn) as f:
+            return [line.strip() for line in f]
+
+    with DRMAACluster(scheduler_port=0, diagnostics_port=None) as cluster:
+        with Client(cluster) as client:
+            cluster.start_workers(1)
+            future = client.submit(inc_and_print, 1)
+            assert future.result() == 2
+
+            w, = cluster.workers.values()
+            assert "stdout: inc_and_print(1)" in get_lines(w.stdout)
+            assert "stderr: inc_and_print(1)" in get_lines(w.stderr)
+
+
 def test_cleanup():
+    """
+    Not a test, just ensure that all worker logs are cleaned up at the
+    end of the test run.
+    """
     def cleanup_logs():
         from glob import glob
         import os

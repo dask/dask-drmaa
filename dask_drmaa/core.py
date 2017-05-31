@@ -1,3 +1,4 @@
+from collections import namedtuple
 import logging
 import os
 import socket
@@ -24,18 +25,26 @@ def get_session():
     return _global_session[0]
 
 
+WorkerSpec = namedtuple('WorkerSpec',
+                        ('job_id', 'kwargs', 'stdout', 'stderr'))
+
+
 worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 
 # All JOB_ID and TASK_ID environment variables
 JOB_ID = "$JOB_ID$SLURM_JOB_ID$LSB_JOBID"
 TASK_ID = "$SGE_TASK_ID$SLURM_ARRAY_TASK_ID$LSB_JOBINDEX"
 
+worker_out_path_template = os.path.join(os.getcwd(), 'worker.%(jid)s.%(kind)s')
+
 default_template = {
     'jobName': 'dask-worker',
-    'outputPath': ':%s/worker.$JOB_ID.$drmaa_incr_ph$.out' % os.getcwd(),
-    'errorPath': ':%s/worker.$JOB_ID.$drmaa_incr_ph$.err' % os.getcwd(),
+    'outputPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', kind='out'),
+    'errorPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', kind='err'),
     'workingDirectory': os.getcwd(),
     'nativeSpecification': '',
+    # stdout/stderr are redirected to files, make sure their contents don't lag
+    'jobEnvironment': {'PYTHONUNBUFFERED': '1'},
     'args': []
     }
 
@@ -123,7 +132,7 @@ class DRMAACluster(object):
                                                   io_loop=self.scheduler.loop)
         self._cleanup_callback.start()
 
-        self.workers = {}  # {job-id: {'resource': quanitty}}
+        self.workers = {}  # {job-id: WorkerSpec}
 
     @gen.coroutine
     def _start(self):
@@ -158,7 +167,12 @@ class DRMAACluster(object):
             with self.create_job_template(**kwargs) as jt:
                 ids = get_session().runBulkJobs(jt, 1, n, 1)
                 logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
-                self.workers.update({jid: kwargs for jid in ids})
+                self.workers.update(
+                    {jid: WorkerSpec(job_id=jid, kwargs=kwargs,
+                                     stdout=worker_out_path_template % dict(jid=jid, kind='out'),
+                                     stderr=worker_out_path_template % dict(jid=jid, kind='err'),
+                                     )
+                     for jid in ids})
 
     def stop_workers(self, worker_ids, sync=False):
         if isinstance(worker_ids, str):

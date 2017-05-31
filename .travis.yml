@@ -12,6 +12,8 @@ matrix:
   include:
     - python: "2.7"
       env: OS=ubuntu-14.04
+    - python: "3.6"
+      env: OS=ubuntu-14.04
 
 env:
   global:

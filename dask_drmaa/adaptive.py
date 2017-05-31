@@ -59,6 +59,8 @@ class Adaptive(object):
         with log_errors():
             if self._adapting:  # Semaphore to avoid overlapping adapt calls
                 return
+            if self.cluster.state != 'running':
+                return
 
             s = self.scheduler
 

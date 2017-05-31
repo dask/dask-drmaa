@@ -117,6 +117,7 @@ class DRMAACluster(object):
         >>> future.result()                              # doctest: +SKIP
         11
         """
+        self.state = 'starting'
         self.hostname = hostname or socket.gethostname()
         logger.info("Start local scheduler at %s", self.hostname)
         self.local_cluster = LocalCluster(n_workers=0, ip='', **kwargs)
@@ -158,6 +159,8 @@ class DRMAACluster(object):
         self.workers = {}            # {job-id: WorkerSpec}
         self.worker_addresses = {}   # {address: job-id}
         self._worker_updates = Queue()
+
+        self.state = 'running'
 
     @gen.coroutine
     def _start(self):
@@ -304,16 +307,10 @@ class DRMAACluster(object):
         return worker_ids
 
     @gen.coroutine
-    def _stop_workers(self, worker_ids):
-        if isinstance(worker_ids, str):
-            worker_ids = [worker_ids]
-        else:
-            worker_ids = list(worker_ids)
-
-        worker_ids = [wid for wid in worker_ids if wid in self.workers]
-        workers = [self.workers[wid].address for wid in worker_ids]
-        yield self.scheduler.retire_workers(workers=workers, close_workers=True)
-
+    def _terminate_workers(self, worker_ids):
+        """
+        Low-level worker termination using DRMAA.
+        """
         for wid in worker_ids:
             try:
                 get_session().control(wid, drmaa.JobControlAction.TERMINATE)
@@ -323,15 +320,38 @@ class DRMAACluster(object):
             if w is not None:
                 del self.worker_addresses[w.address]
 
+    @gen.coroutine
+    def _stop_workers(self, worker_ids):
+        if isinstance(worker_ids, str):
+            worker_ids = [worker_ids]
+        else:
+            worker_ids = list(worker_ids)
+
+        worker_ids = [wid for wid in worker_ids if wid in self.workers]
+        workers = [self.workers[wid].address for wid in worker_ids]
+        yield self.scheduler.retire_workers(workers=workers, close_workers=True)
+        self._terminate_workers(worker_ids)
+
         logger.info("Stop workers %s", worker_ids)
         raise gen.Return(worker_ids)
 
     @gen.coroutine
     def _stop_all_workers(self):
-        worker_ids = yield self._stop_workers(self.workers)
+        # Avoid retire_workers() as it may try to replicate keys around
+        # if some other workers arrive in the meantime
+        workers = list(self.workers.values())
+        worker_ids = [w.id for w in workers]
+        yield [self.scheduler.close_worker(worker=w.address)
+               for w in workers]
+        yield self._terminate_workers(worker_ids)
+
         raise gen.Return(worker_ids)
 
     def close(self):
+        """
+        Shutdown the DRMAA-based cluster, stopping all workers and the scheduler.
+        """
+        self.state = 'closing'
         logger.info("Closing DRMAA cluster")
         worker_ids = sync(self.scheduler.loop, self._stop_all_workers)
         get_session().synchronize(worker_ids, dispose=True)
@@ -339,6 +359,8 @@ class DRMAACluster(object):
 
         if os.path.exists(self.script):
             os.remove(self.script)
+
+        self.state = 'closed'
 
     def __enter__(self):
         return self

@@ -1,3 +1,5 @@
+from __future__ import print_function, division, absolute_import
+
 from collections import namedtuple
 import logging
 import os
@@ -8,10 +10,12 @@ import tempfile
 import drmaa
 from toolz import merge
 from tornado import gen
-from tornado.ioloop import PeriodicCallback
+from tornado.queues import Queue, QueueEmpty
+from tornado.ioloop import IOLoop, PeriodicCallback
 
-from distributed import LocalCluster
-from distributed.utils import log_errors, ignoring
+from distributed import LocalCluster, Client
+from distributed.diagnostics.plugin import SchedulerPlugin
+from distributed.utils import log_errors, ignoring, sync
 
 logger = logging.getLogger(__name__)
 
@@ -26,21 +30,23 @@ def get_session():
 
 
 WorkerSpec = namedtuple('WorkerSpec',
-                        ('job_id', 'kwargs', 'stdout', 'stderr'))
+                        ('id', 'address', 'kwargs', 'stdout', 'stderr'))
 
 
 worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 
 # All JOB_ID and TASK_ID environment variables
-JOB_ID = "$JOB_ID$SLURM_JOB_ID$LSB_JOBID"
-TASK_ID = "$SGE_TASK_ID$SLURM_ARRAY_TASK_ID$LSB_JOBINDEX"
+JOB_IDS = ['JOB_ID', 'SLURM_JOB_ID', 'LSB_JOBID']
+JOB_ID = ''.join('$' + s for s in JOB_IDS)
+TASK_IDS = ['SGE_TASK_ID', 'SLURM_ARRAY_TASK_ID', 'LSB_JOBINDEX']
+TASK_ID = ''.join('$' + s for s in TASK_IDS)
 
-worker_out_path_template = os.path.join(os.getcwd(), 'worker.%(jid)s.%(kind)s')
+worker_out_path_template = os.path.join(os.getcwd(), 'worker.%(id)s.%(kind)s')
 
 default_template = {
     'jobName': 'dask-worker',
-    'outputPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', kind='out'),
-    'errorPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', kind='err'),
+    'outputPath': ':' + worker_out_path_template % dict(id='$JOB_ID.$drmaa_incr_ph$', kind='out'),
+    'errorPath': ':' + worker_out_path_template % dict(id='$JOB_ID.$drmaa_incr_ph$', kind='err'),
     'workingDirectory': os.getcwd(),
     'nativeSpecification': '',
     # stdout/stderr are redirected to files, make sure their contents don't lag
@@ -58,6 +64,22 @@ def make_job_script(executable, name, preexec=()):
     preparation = list(preexec)
     script_template = '\n'.join([shebang] + preparation + [execute, ''])
     return script_template
+
+
+
+class DRMAASchedulerPlugin(SchedulerPlugin):
+
+    def __init__(self, cluster):
+        self.cluster = cluster
+
+    def add_worker(self, scheduler, worker):
+        self.cluster._worker_updates.put_nowait((worker, 'add'))
+
+    def remove_worker(self, scheduler, worker):
+        self.cluster._worker_updates.put_nowait((worker, 'remove'))
+        wid = self.cluster.worker_addresses.pop(worker, None)
+        if wid:
+            del self.cluster.workers[wid]
 
 
 class DRMAACluster(object):
@@ -98,6 +120,7 @@ class DRMAACluster(object):
         self.hostname = hostname or socket.gethostname()
         logger.info("Start local scheduler at %s", self.hostname)
         self.local_cluster = LocalCluster(n_workers=0, ip='', **kwargs)
+        self.scheduler.add_plugin(DRMAASchedulerPlugin(self))
 
         if script is None:
             fn = tempfile.mktemp(suffix='sh',
@@ -132,7 +155,9 @@ class DRMAACluster(object):
                                                   io_loop=self.scheduler.loop)
         self._cleanup_callback.start()
 
-        self.workers = {}  # {job-id: WorkerSpec}
+        self.workers = {}            # {job-id: WorkerSpec}
+        self.worker_addresses = {}   # {address: job-id}
+        self._worker_updates = Queue()
 
     @gen.coroutine
     def _start(self):
@@ -162,38 +187,155 @@ class DRMAACluster(object):
 
         return jt
 
-    def start_workers(self, n=1, **kwargs):
+    def start_workers(self, n=1, timeout=20, wait=True, **kwargs):
+        """
+        Start a number of workers on the cluster.
+        If *wait* is true, wait for the workers to register to the
+        scheduler and return a list of WorkerSpec instances.
+        """
+        return sync(self.scheduler.loop, self._start_workers,
+                    n=n, timeout=timeout, wait=wait, **kwargs)
+
+    @gen.coroutine
+    def _start_workers(self, n=1, timeout=20, wait=True, **kwargs):
         with log_errors():
             with self.create_job_template(**kwargs) as jt:
                 ids = get_session().runBulkJobs(jt, 1, n, 1)
-                logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
-                self.workers.update(
-                    {jid: WorkerSpec(job_id=jid, kwargs=kwargs,
-                                     stdout=worker_out_path_template % dict(jid=jid, kind='out'),
-                                     stderr=worker_out_path_template % dict(jid=jid, kind='err'),
-                                     )
-                     for jid in ids})
+                logger.info("Start %d workers. Job ID: %s",
+                            len(ids), ids[0].split('.')[0])
 
-    def stop_workers(self, worker_ids, sync=False):
+            if wait:
+                workers = yield self._wait_for_started_workers(
+                    ids=ids, timeout=timeout, kwargs=kwargs)
+                raise gen.Return(workers)
+
+    @gen.coroutine
+    def _wait_for_started_workers(self, ids, timeout, kwargs):
+        def get_environ():
+            return dict(os.environ)
+
+        deadline = IOLoop.current().time() + timeout
+
+        client = Client(self.local_cluster, start=False)
+        yield client._start()
+
+        workers = []
+        ids = set(ids)
+        n = len(ids)
+
+        while ids:
+            n_remaining = len(ids)
+            worker_addresses = []
+            while len(worker_addresses) < n_remaining:
+                try:
+                    worker, action = yield self._worker_updates.get(deadline)
+                except QueueEmpty:
+                    logger.error("Timed out waiting for the following workers: %s",
+                                 sorted(ids))
+                    yield client._shutdown(fast=True)
+                    raise gen.Return(workers)
+                if action == 'add':
+                    worker_addresses.append(worker)
+
+            # We got enough new workers, see if they correspond
+            # to the runBulkJobs request
+            environs = yield client._run(get_environ, workers=worker_addresses)
+
+            for w, env in environs.items():
+                wid = self._get_worker_id(env, w)
+                if wid is None:
+                    continue
+                if wid not in ids:
+                    logger.warning("Got unexpected id %r for worker %r "
+                                   "(expected ids: %s)", wid, w,
+                                   sorted(ids))
+                    continue
+
+                logger.debug("Got worker %r with id %r", w, wid)
+                self.workers[wid] = WorkerSpec(
+                    id=wid, address=w, kwargs=kwargs,
+                    stdout=worker_out_path_template % dict(id=wid, kind='out'),
+                    stderr=worker_out_path_template % dict(id=wid, kind='err'),
+                    )
+                self.worker_addresses[w] = wid
+                workers.append(self.workers[wid])
+                ids.remove(wid)
+
+        yield client._shutdown(fast=True)
+        raise gen.Return(workers)
+
+    def _get_worker_id(self, environ, worker_name):
+        """
+        Parse a worker's id from its environment variables.
+        """
+        for envname in JOB_IDS:
+            job_id = environ.get(envname, '')
+            if job_id:
+                break
+        else:
+            job_id = None
+            logger.warning("Could not determine job ID for "
+                           "worker %r; available env vars are %s",
+                           worker_name, [k for (k, v) in sorted(environ.items()) if v])
+
+        for envname in TASK_IDS:
+            task_id = environ.get(envname, '')
+            if task_id:
+                break
+        else:
+            task_id = None
+            logger.warning("Could not determine task ID for "
+                           "worker %r; available env vars are %s",
+                           worker_name, [k for (k, v) in sorted(environ.items()) if v])
+
+        if job_id and task_id:
+            return '%s.%s' % (job_id, task_id)
+        else:
+            return None
+
+    def stop_workers(self, worker_ids, wait=False):
+        """
+        Stop the workers with the given ids.  If *wait* is true, wait
+        until their termination is registered by DRMAA.
+        """
+        worker_ids = sync(self.scheduler.loop, self._stop_workers, worker_ids)
+        if wait:
+            get_session().synchronize(worker_ids, dispose=True)
+        return worker_ids
+
+    @gen.coroutine
+    def _stop_workers(self, worker_ids):
         if isinstance(worker_ids, str):
             worker_ids = [worker_ids]
+        else:
+            worker_ids = list(worker_ids)
 
-        for wid in list(worker_ids):
+        worker_ids = [wid for wid in worker_ids if wid in self.workers]
+        workers = [self.workers[wid].address for wid in worker_ids]
+        yield self.scheduler.retire_workers(workers=workers, close_workers=True)
+
+        for wid in worker_ids:
             try:
                 get_session().control(wid, drmaa.JobControlAction.TERMINATE)
             except drmaa.errors.InvalidJobException:
                 pass
-            self.workers.pop(wid)
+            w = self.workers.pop(wid, None)
+            if w is not None:
+                del self.worker_addresses[w.address]
 
         logger.info("Stop workers %s", worker_ids)
-        if sync:
-            get_session().synchronize(worker_ids, dispose=True)
+        raise gen.Return(worker_ids)
+
+    @gen.coroutine
+    def _stop_all_workers(self):
+        worker_ids = yield self._stop_workers(self.workers)
+        raise gen.Return(worker_ids)
 
     def close(self):
         logger.info("Closing DRMAA cluster")
+        worker_ids = sync(self.scheduler.loop, self._stop_all_workers)
+        get_session().synchronize(worker_ids, dispose=True)
         self.local_cluster.close()
-        if self.workers:
-            self.stop_workers(self.workers, sync=True)
 
         if os.path.exists(self.script):
             os.remove(self.script)
@@ -220,7 +362,6 @@ class DRMAACluster(object):
         return "<%s: %d workers>" % (self.__class__.__name__, len(self.workers))
 
     __repr__ = __str__
-
 
 
 def remove_workers():

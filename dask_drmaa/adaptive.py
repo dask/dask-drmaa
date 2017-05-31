@@ -50,12 +50,12 @@ class Adaptive(object):
         Get the cluster scheduler to cleanup any workers it decides can retire
         """
         with log_errors():
-            workers = yield self.scheduler.retire_workers(close=True)
+            workers = yield self.scheduler.retire_workers(close_workers=True)
             logger.info("Retiring workers {}".format(workers))
 
     @gen.coroutine
     def _adapt(self):
-        logger.info("Adapting")
+        logger.debug("Adapting")
         with log_errors():
             if self._adapting:  # Semaphore to avoid overlapping adapt calls
                 return
@@ -74,6 +74,9 @@ class Adaptive(object):
                     if len(s.workers) < len(self.cluster.workers):
                         # TODO: this depends on reliable cleanup of closed workers
                         return
+
+                workers = []
+
                 if s.unrunnable:
                     duration = 0
                     memory = []
@@ -85,16 +88,18 @@ class Adaptive(object):
                                 memory.append(m)
 
                     if memory:
-                        workers = self.cluster.start_workers(1, memory=max(memory) * 4)
+                        workers = yield self.cluster._start_workers(1, memory=max(memory) * 4)
                     else:
-                        workers = self.cluster.start_workers(1)
+                        workers = yield self.cluster._start_workers(1)
                     logger.info("Starting workers due to resource constraints: %s", workers)
 
                 if busy and not s.idle:
-                    workers = self.cluster.start_workers(len(busy))
+                    workers = yield self.cluster._start_workers(len(busy))
                     logger.info("Starting workers due to over-saturation: %s", workers)
 
-                yield self._retire_workers()
+                if not workers:
+                    # We may retire workers if we haven't just started new ones
+                    yield self._retire_workers()
             finally:
                 self._adapting = False
 

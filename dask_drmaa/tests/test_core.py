@@ -57,6 +57,7 @@ def test_pythonpath():
 
         with DRMAACluster(scheduler_port=0,
                           preexec_commands=['export PYTHONPATH=%s:PYTHONPATH' % tmpdir],
+                          diagnostics_port=None,
                           ) as cluster:
             with Client(cluster) as client:
                 cluster.start_workers(2)
@@ -80,10 +81,10 @@ def test_job_name_as_name(loop):
 
 
 def test_multiple_overlapping_clusters(loop):
-    with DRMAACluster(scheduler_port=0) as cluster_1:
+    with DRMAACluster(scheduler_port=0, diagnostics_port=None) as cluster_1:
         cluster_1.start_workers(1)
         with Client(cluster_1, loop=loop) as client_1:
-            with DRMAACluster(scheduler_port=0) as cluster_2:
+            with DRMAACluster(scheduler_port=0, diagnostics_port=None) as cluster_2:
                 cluster_2.start_workers(1)
                 with Client(cluster_2, loop=loop) as client_2:
                     future_1 = client_1.submit(inc, 1)
@@ -94,7 +95,7 @@ def test_multiple_overlapping_clusters(loop):
 
 
 def test_stop_single_worker(loop):
-    with DRMAACluster(scheduler_port=0) as cluster:
+    with DRMAACluster(scheduler_port=0, diagnostics_port=None) as cluster:
         with Client(cluster, loop=loop) as client:
             cluster.start_workers(2)
             future = client.submit(lambda x: x + 1, 1)
@@ -109,11 +110,10 @@ def test_stop_single_worker(loop):
                 assert time() < start + 60
 
 
-@pytest.mark.xfail(reason="Need mapping from worker addresses to job ids")
 def test_stop_workers_politely(loop):
-    with DRMAACluster(scheduler_port=0) as cluster:
+    with DRMAACluster(scheduler_port=0, diagnostics_port=None) as cluster:
         with Client(cluster, loop=loop) as client:
-            cluster.start_workers(2)
+            cluster.start_workers(2, wait=True)
 
             while len(client.ncores()) < 2:
                 sleep(0.1)
@@ -121,6 +121,8 @@ def test_stop_workers_politely(loop):
             futures = client.scatter(list(range(10)))
 
             a, b = cluster.workers
+            # If worker is stopped gracefully, data is redistributed amongst
+            # other workers
             cluster.stop_workers(a)
 
             data = client.gather(futures)
@@ -128,7 +130,7 @@ def test_stop_workers_politely(loop):
 
 
 def test_logs(loop):
-    with DRMAACluster(scheduler_port=0) as cluster:
+    with DRMAACluster(scheduler_port=0, diagnostics_port=None) as cluster:
         cluster.start_workers(2)
         while len(cluster.scheduler.workers) < 2:
             sleep(0.1)

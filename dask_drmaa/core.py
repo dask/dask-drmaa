@@ -165,7 +165,12 @@ class DRMAACluster(object):
     def start_workers(self, n=1, **kwargs):
         with log_errors():
             with self.create_job_template(**kwargs) as jt:
-                ids = get_session().runBulkJobs(jt, 1, n, 1)
+                session = get_session()
+                if "SLURM" in session.drmsInfo:
+                    jt.outputPath = jt.outputPath.replace("$JOB_ID", "%j")
+                    jt.errorPath = jt.errorPath.replace("$JOB_ID", "%j")
+
+                ids = session.runBulkJobs(jt, 1, n, 1)
                 logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
                 self.workers.update(
                     {jid: WorkerSpec(job_id=jid, kwargs=kwargs,

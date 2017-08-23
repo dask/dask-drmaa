@@ -99,17 +99,22 @@ def test_stop_single_worker(loop):
             cluster.start_workers(2)
             future = client.submit(lambda x: x + 1, 1)
             assert future.result() == 2
+            while len(client.ncores()) < 2:
+                sleep(0.1)
 
             a, b = cluster.workers
-            cluster.stop_workers(a)
+            local_dir = client.run(lambda dask_worker: dask_worker.local_dir,
+                                   workers=[a])[a]
+            assert os.path.exists(local_dir)
 
+            cluster.stop_workers(a)
             start = time()
             while len(client.ncores()) != 1:
                 sleep(0.2)
                 assert time() < start + 60
+    assert not os.path.exists(local_dir)
 
 
-@pytest.mark.xfail(reason="Need mapping from worker addresses to job ids")
 def test_stop_workers_politely(loop):
     with DRMAACluster(scheduler_port=0) as cluster:
         with Client(cluster, loop=loop) as client:

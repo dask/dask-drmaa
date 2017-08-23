@@ -12,6 +12,7 @@ from tornado.ioloop import PeriodicCallback
 
 from distributed import LocalCluster
 from distributed.utils import log_errors, ignoring
+from distributed.protocol.pickle import dumps
 
 logger = logging.getLogger(__name__)
 
@@ -174,16 +175,34 @@ class DRMAACluster(object):
                                      )
                      for jid in ids})
 
+    @gen.coroutine
     def stop_workers(self, worker_ids, sync=False):
         if isinstance(worker_ids, str):
             worker_ids = [worker_ids]
+        else:
+            worker_ids = list(worker_ids)
 
+        # Let the scheduler gracefully retire workers first
+        ids_to_ips = {
+            v['name']: k for k, v in self.scheduler.worker_info.items()
+        }
+        worker_ips = [ids_to_ips[wid]
+                      for wid in worker_ids
+                      if wid in ids_to_ips]
+        retired = yield self.scheduler.retire_workers(workers=worker_ips,
+                                                      close_workers=True)
+        logger.info("Retired workers %s", retired)
         for wid in list(worker_ids):
             try:
                 get_session().control(wid, drmaa.JobControlAction.TERMINATE)
             except drmaa.errors.InvalidJobException:
                 pass
-            self.workers.pop(wid)
+            try:
+                self.workers.pop(wid)
+            except KeyError:
+                # If we have multiple callers at once, it may have already
+                # been popped off
+                pass
 
         logger.info("Stop workers %s", worker_ids)
         if sync:
@@ -201,10 +220,10 @@ class DRMAACluster(object):
 
     def close(self):
         logger.info("Closing DRMAA cluster")
-        self.local_cluster.close()
         if self.workers:
             self.stop_workers(self.workers, sync=True)
 
+        self.local_cluster.close()
         if os.path.exists(self.script):
             os.remove(self.script)
 

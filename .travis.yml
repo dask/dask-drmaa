@@ -22,10 +22,6 @@ env:
 
 before_install:
   - pwd
-
-
-  # Install docker
-  - bash ci/scripts/travis_docker_setup.sh
   - docker version
   - docker-compose version
 

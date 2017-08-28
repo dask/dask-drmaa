@@ -10,7 +10,8 @@ from distributed.utils_test import loop, inc, slowinc
 
 
 def test_adaptive_memory(loop):
-    with SGECluster(scheduler_port=0, cleanup_interval=100) as cluster:
+    with SGECluster(scheduler_port=0, diagnostics_port=None,
+                    cleanup_interval=100) as cluster:
         adapt = Adaptive(cluster)
         with Client(cluster, loop=loop) as client:
             future = client.submit(inc, 1, resources={'memory': 1e9})
@@ -33,7 +34,7 @@ def test_adaptive_memory(loop):
 
 
 def test_adaptive_normal_tasks(loop):
-    with SGECluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0, diagnostics_port=None) as cluster:
         adapt = Adaptive(cluster)
         with Client(cluster, loop=loop) as client:
             future = client.submit(inc, 1)
@@ -42,7 +43,7 @@ def test_adaptive_normal_tasks(loop):
 
 @pytest.mark.parametrize('interval', [50, 1000])
 def test_dont_over_request(loop, interval):
-    with SGECluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0, diagnostics_port=None) as cluster:
         adapt = Adaptive(cluster)
         with Client(cluster, loop=loop) as client:
             future = client.submit(inc, 1)
@@ -55,7 +56,7 @@ def test_dont_over_request(loop, interval):
 
 
 def test_request_more_than_one(loop):
-    with SGECluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0, diagnostics_port=None) as cluster:
         adapt = Adaptive(cluster)
         with Client(cluster, loop=loop) as client:
             futures = client.map(slowinc, range(1000), delay=0.2)
@@ -64,7 +65,7 @@ def test_request_more_than_one(loop):
 
 
 def test_dont_request_if_idle(loop):
-    with SGECluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0, diagnostics_port=None) as cluster:
         cluster.start_workers(1)
         with Client(cluster, loop=loop) as client:
             while not cluster.scheduler.workers:
@@ -79,7 +80,7 @@ def test_dont_request_if_idle(loop):
 
 
 def test_dont_request_if_not_enough_tasks(loop):
-    with SGECluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0, diagnostics_port=None) as cluster:
         adapt = Adaptive(cluster)
         with Client(cluster, loop=loop) as client:
             cluster.scheduler.task_duration['slowinc'] = 1000
@@ -91,7 +92,7 @@ def test_dont_request_if_not_enough_tasks(loop):
 
 
 def test_dont_request_on_many_short_tasks(loop):
-    with SGECluster(scheduler_port=0) as cluster:
+    with SGECluster(scheduler_port=0, diagnostics_port=None) as cluster:
         adapt = Adaptive(cluster, interval=50, startup_cost=10)
         with Client(cluster, loop=loop) as client:
             cluster.scheduler.task_duration['slowinc'] = 0.001

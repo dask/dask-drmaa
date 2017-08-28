@@ -5,7 +5,7 @@ class SGECluster(DRMAACluster):
     default_memory = None
 
     def start_workers(self, n=1, nativeSpecification='', cpus=1, memory=None,
-                      memory_fraction=0.5):
+                      memory_fraction=0.5, **kwargs):
         '''
         Start dask workers on an SGE cluster.
 
@@ -25,7 +25,7 @@ class SGECluster(DRMAACluster):
         '''
         return super(SGECluster, self).start_workers(
             n=n, nativeSpecification=nativeSpecification, cpus=cpus,
-            memory=memory, memory_fraction=memory_fraction)
+            memory=memory, memory_fraction=memory_fraction, **kwargs)
 
     def create_job_template(self, nativeSpecification='', cpus=1, memory=None,
             memory_fraction=0.5):

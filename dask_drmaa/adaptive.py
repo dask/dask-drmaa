@@ -1,9 +1,11 @@
 from __future__ import print_function, division, absolute_import
 
 import logging
+import warnings
+
+from distributed import Scheduler
 from distributed.utils import log_errors
 from distributed.deploy import adaptive
-
 from tornado import gen
 
 from .core import get_session
@@ -36,6 +38,13 @@ class Adaptive(adaptive.Adaptive):
         if cluster is None:
             raise TypeError("`Adaptive.__init__() missing required argument: "
                             "`cluster`")
+
+        if isinstance(cluster, Scheduler):
+            warnings.warn("The ``cluster`` and ``scheduler`` arguments to "
+                          "Adaptive.__init__ will switch positions in a future"
+                          " release. Please use keyword arguments.",
+                          FutureWarning)
+            cluster, scheduler = scheduler, cluster
         if scheduler is None:
             scheduler = cluster.scheduler
 

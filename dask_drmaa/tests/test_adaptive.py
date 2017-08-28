@@ -103,3 +103,10 @@ def test_dont_request_on_many_short_tasks(loop):
             for i in range(20):
                 sleep(0.1)
                 assert len(cluster.workers) < 2
+
+
+def test_order_warns(loop):
+    with SGECluster(scheduler_port=0) as cluster:
+        scheduler = cluster.scheduler
+        with pytest.warns(FutureWarning):
+            adapt = Adaptive(scheduler, cluster)

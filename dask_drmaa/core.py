@@ -189,6 +189,16 @@ class DRMAACluster(object):
         if sync:
             get_session().synchronize(worker_ids, dispose=True)
 
+    @gen.coroutine
+    def scale_up(self, n, **kwargs):
+        yield [self.start_workers(**kwargs)
+               for _ in range(n - len(self.workers))]
+
+    @gen.coroutine
+    def scale_down(self, workers):
+        workers = set(workers)
+        yield self.scheduler.retire_workers(workers=workers)
+
     def close(self):
         logger.info("Closing DRMAA cluster")
         self.local_cluster.close()

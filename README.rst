@@ -111,12 +111,12 @@ cluster or when starting new workers:
 Related Work
 ------------
 
-*  DRMAA_: The Distributed Resource Management Application API, a high level
+* DRMAA_: The Distributed Resource Management Application API, a high level
   API for general use on traditional job schedulers
-*  drmaa-python_: The Python bindings for DRMAA
-*  DaskSGE_: An earlier dask-drmaa implementation
-*  `Son of Grid Engine`_: The default implementation used in testing
-*  Dask.distributed_: The actual distributed computing library this launches
+* drmaa-python_: The Python bindings for DRMAA
+* DaskSGE_: An earlier dask-drmaa implementation
+* `Son of Grid Engine`_: The default implementation used in testing
+* Dask.distributed_: The actual distributed computing library this launches
 
 .. _DRMAA: https://www.drmaa.org/
 .. _drmaa-python: http://drmaa-python.readthedocs.io/en/latest/

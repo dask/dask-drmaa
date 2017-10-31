@@ -161,6 +161,11 @@ class DRMAACluster(object):
                 raise ValueError("Invalid job template attribute %s" % key)
             setattr(jt, key, value)
 
+        session = get_session()
+        if "SLURM" in session.drmsInfo:
+            jt.outputPath = jt.outputPath.replace("$JOB_ID", "%j")
+            jt.errorPath = jt.errorPath.replace("$JOB_ID", "%j")
+
         return jt
 
     def start_workers(self, n=1, **kwargs):

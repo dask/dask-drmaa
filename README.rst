@@ -59,12 +59,21 @@ as follows
    docker-compose build
    ./start-sge.sh
 
+If you have done this previously and need to refresh your solution you can do
+the following
+
+.. code-block:: bash
+
+   docker-compose stop
+   docker-compose build --no-cache
+   ./start-sge.sh
+
 And run tests with py.test in the master docker container
 
 .. code-block:: bash
 
   docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py develop"
-  docker exec -it sge_master py.test dask-drmaa/dask_drmaa --verbose
+  docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; py.test dask_drmaa --verbose"
 
 
 Adaptive Load

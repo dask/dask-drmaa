@@ -1,6 +1,7 @@
 from collections import namedtuple
 import logging
 import os
+import shutil
 import socket
 import sys
 import tempfile
@@ -105,6 +106,7 @@ class DRMAACluster(object):
                                  prefix='dask-worker-script',
                                  dir=os.path.curdir)
             self.script = fn
+            self._should_cleanup_script = True
 
             script_contents = make_job_script(executable=worker_bin_path,
                                               name='%s.%s' % (JOB_ID, TASK_ID),
@@ -120,6 +122,10 @@ class DRMAACluster(object):
             os.chmod(self.script, 0o777)
 
         else:
+            self._should_cleanup_script = False
+            with ignoring(EnvironmentError):  # may be in the same path
+                script = shutil.copy(script, os.path.curdir)
+                self._should_cleanup_script = True
             self.script = script
             assert not preexec_commands, "Cannot specify both script and preexec_commands"
 
@@ -225,7 +231,7 @@ class DRMAACluster(object):
             self.stop_workers(self.workers, sync=True)
 
         self.local_cluster.close()
-        if os.path.exists(self.script):
+        if self._should_cleanup_script and os.path.exists(self.script):
             os.remove(self.script)
 
     def __enter__(self):

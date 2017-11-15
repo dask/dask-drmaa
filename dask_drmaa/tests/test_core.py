@@ -189,9 +189,16 @@ def test_cleanup():
 
 
 def test_passed_script(loop):
-    with tmpfile(extension='.sh') as fn:
+    with tmpfile(extension='sh') as fn:
         with open(fn, 'w') as f:
             f.write(make_job_script(executable=worker_bin_path,
                                     name='foo'))
+        os.chmod(fn, 0o777)
         with DRMAACluster(scheduler_port=0, script=fn) as cluster:
-            assert cluster.script == fn
+            tmp_script_location = cluster.script
+            assert cluster.script.split(os.path.sep)[-1] == fn.split(os.path.sep)[-1]
+            job = cluster.start_workers(1)
+            with Client(cluster, loop=loop) as client:
+                assert client.submit(lambda x: x + 1, 10).result() == 11
+        assert os.path.exists(fn)  # doesn't cleanup provided script
+        assert not os.path.exists(tmp_script_location)

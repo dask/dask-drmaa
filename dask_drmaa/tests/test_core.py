@@ -9,8 +9,10 @@ from time import sleep, time
 import pytest
 
 from dask_drmaa import DRMAACluster
+from dask_drmaa.core import make_job_script, worker_bin_path
 from distributed import Client
 from distributed.utils_test import loop, inc
+from distributed.utils import tmpfile
 
 
 def test_simple(loop):
@@ -184,3 +186,19 @@ def test_cleanup():
 
     import atexit
     atexit.register(cleanup_logs)
+
+
+def test_passed_script(loop):
+    with tmpfile(extension='sh') as fn:
+        with open(fn, 'w') as f:
+            f.write(make_job_script(executable=worker_bin_path,
+                                    name='foo'))
+        os.chmod(fn, 0o777)
+        with DRMAACluster(scheduler_port=0, script=fn) as cluster:
+            tmp_script_location = cluster.script
+            assert cluster.script.split(os.path.sep)[-1] == fn.split(os.path.sep)[-1]
+            job = cluster.start_workers(1)
+            with Client(cluster, loop=loop) as client:
+                assert client.submit(lambda x: x + 1, 10).result() == 11
+        assert os.path.exists(fn)  # doesn't cleanup provided script
+        assert not os.path.exists(tmp_script_location)

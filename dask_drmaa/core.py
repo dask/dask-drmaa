@@ -64,7 +64,8 @@ def make_job_script(executable, name, preexec=()):
 
 class DRMAACluster(object):
     def __init__(self, template=None, cleanup_interval=1000, hostname=None,
-                 script=None, preexec_commands=(), **kwargs):
+                 script=None, preexec_commands=(), copy_script=True,
+                 **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
 
@@ -75,6 +76,9 @@ class DRMAACluster(object):
         script: string (optional)
             Path to the dask-worker executable script.
             A temporary file will be made if none is provided (recommended)
+        copy_script: bool
+            Whether should copy the passed script to the current working
+            directory. This is primarily to work around an issue with SGE.
         args: list
             Extra string arguments to pass to dask-worker
         outputPath: string
@@ -123,9 +127,11 @@ class DRMAACluster(object):
 
         else:
             self._should_cleanup_script = False
-            with ignoring(EnvironmentError):  # may be in the same path
-                script = shutil.copy(script, os.path.curdir)
-                self._should_cleanup_script = True
+            if copy_script:
+                with ignoring(EnvironmentError):  # may be in the same path
+                    shutil.copy(script, os.path.curdir)  # python 2.x returns None
+                    script = os.path.join(os.path.curdir, os.path.basename(script))
+                    self._should_cleanup_script = True
             self.script = script
             assert not preexec_commands, "Cannot specify both script and preexec_commands"
 

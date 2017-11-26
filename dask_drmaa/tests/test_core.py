@@ -130,6 +130,9 @@ def test_stop_workers_politely(loop):
             a, b = cluster.workers
             cluster.stop_workers(a)
 
+            while len(client.ncores()) != 1:
+                sleep(0.1)
+
             data = client.gather(futures)
             assert data == list(range(10))
 

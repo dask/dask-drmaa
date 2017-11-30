@@ -90,6 +90,7 @@ def test_dont_request_if_not_enough_tasks(loop):
                 assert len(cluster.workers) < 2
 
 
+@pytest.mark.xfail
 def test_dont_request_on_many_short_tasks(loop):
     with SGECluster(scheduler_port=0) as cluster:
         adapt = Adaptive(cluster, interval=50, startup_cost=10)

@@ -79,7 +79,7 @@ class DRMAACluster(object):
         copy_script: bool
             Whether should copy the passed script to the current working
             directory. This is primarily to work around an issue with SGE.
-        args: list
+        kwargs: dict
             Extra string arguments to pass to dask-worker
         outputPath: string
         errorPath: string

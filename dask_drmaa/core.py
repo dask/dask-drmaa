@@ -34,8 +34,23 @@ WorkerSpec = namedtuple('WorkerSpec',
 worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 
 # All JOB_ID and TASK_ID environment variables
-JOB_ID = "$JOB_ID$SLURM_JOB_ID$LSB_JOBID"
-TASK_ID = "$SGE_TASK_ID$SLURM_ARRAY_TASK_ID$LSB_JOBINDEX"
+_drm_info = drmaa.Session().drmsInfo
+if "SLURM" in _drm_info:
+    JOB_PARAM = "%j"
+    JOB_ID = "$SLURM_JOB_ID"
+    TASK_ID = "$SLURM_ARRAY_TASK_ID"
+elif "LSF" in _drm_info:
+    JOB_PARAM = "%J"
+    JOB_ID = "$LSB_JOBID"
+    TASK_ID = "$LSB_JOBINDEX"
+elif "GE" in _drm_info:
+    JOB_PARAM = "$JOB_ID"
+    JOB_ID = "$JOB_ID"
+    TASK_ID = "$SGE_TASK_ID"
+else:
+    JOB_PARAM = ""
+    JOB_ID = ""
+    TASK_ID = ""
 
 worker_out_path_template = os.path.join(
     os.getcwd(),
@@ -45,10 +60,10 @@ worker_out_path_template = os.path.join(
 default_template = {
     'jobName': 'dask-worker',
     'outputPath': ':' + worker_out_path_template % dict(
-        jid='$JOB_ID.$drmaa_incr_ph$', ext='out'
+        jid=".".join([JOB_PARAM, '$drmaa_incr_ph$']), ext='out'
     ),
     'errorPath': ':' + worker_out_path_template % dict(
-        jid='$JOB_ID.$drmaa_incr_ph$', ext='err'
+        jid=".".join([JOB_PARAM, '$drmaa_incr_ph$']), ext='err'
     ),
     'workingDirectory': os.getcwd(),
     'nativeSpecification': '',

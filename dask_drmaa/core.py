@@ -37,12 +37,12 @@ worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 JOB_ID = "$JOB_ID$SLURM_JOB_ID$LSB_JOBID"
 TASK_ID = "$SGE_TASK_ID$SLURM_ARRAY_TASK_ID$LSB_JOBINDEX"
 
-worker_out_path_template = os.path.join(os.getcwd(), 'worker.%(jid)s.%(kind)s')
+worker_out_path_template = os.path.join(os.getcwd(), 'worker.%(jid)s.%(ext)s')
 
 default_template = {
     'jobName': 'dask-worker',
-    'outputPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', kind='out'),
-    'errorPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', kind='err'),
+    'outputPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', ext='out'),
+    'errorPath': ':' + worker_out_path_template % dict(jid='$JOB_ID.$drmaa_incr_ph$', ext='err'),
     'workingDirectory': os.getcwd(),
     'nativeSpecification': '',
     # stdout/stderr are redirected to files, make sure their contents don't lag
@@ -183,8 +183,8 @@ class DRMAACluster(object):
                 logger.info("Start %d workers. Job ID: %s", len(ids), ids[0].split('.')[0])
                 self.workers.update(
                     {jid: WorkerSpec(job_id=jid, kwargs=kwargs,
-                                     stdout=worker_out_path_template % dict(jid=jid, kind='out'),
-                                     stderr=worker_out_path_template % dict(jid=jid, kind='err'),
+                                     stdout=worker_out_path_template % dict(jid=jid, ext='out'),
+                                     stderr=worker_out_path_template % dict(jid=jid, ext='err'),
                                      )
                      for jid in ids})
 

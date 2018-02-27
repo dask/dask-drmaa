@@ -38,7 +38,7 @@ install:
   - which python
 
 script:
-  - docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; python setup.py install"
+  - docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; pip install --no-cache-dir ."
   - docker exec -it sge_master /bin/bash -c "cd /dask-drmaa; py.test dask_drmaa --verbose"
 
 after_success:

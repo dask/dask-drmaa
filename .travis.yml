@@ -45,5 +45,5 @@ after_success:
   - docker exec -it sge_master bash -c 'cat /tmp/sge*'
   - docker exec -it slave_one bash -c 'cat /tmp/exec*'
   - docker exec -it slave_two bash -c 'cat /tmp/exec*'
-  - pip install coveralls
+  - pip install --no-cache-dir coveralls
   - coveralls

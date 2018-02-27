@@ -9,7 +9,6 @@ from distributed import Client
 from distributed.utils_test import loop, inc, slowinc
 
 
-@pytest.mark.skip(reason="currently times out for an unknown reason")
 def test_adaptive_memory(loop):
     with SGECluster(scheduler_port=0, cleanup_interval=100) as cluster:
         adapt = Adaptive(cluster, cluster.scheduler)

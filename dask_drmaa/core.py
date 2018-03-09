@@ -142,8 +142,7 @@ class DRMAACluster(object):
                               template or {})
 
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
-                                                  callback_time=cleanup_interval,
-                                                  io_loop=self.scheduler.loop)
+                                                  callback_time=cleanup_interval)
         self._cleanup_callback.start()
 
         self.workers = {}  # {job-id: WorkerSpec}

@@ -9,11 +9,10 @@ import tempfile
 import drmaa
 from toolz import merge
 from tornado import gen
-from tornado.ioloop import PeriodicCallback
 
 from distributed import LocalCluster
 from distributed.utils import log_errors, ignoring
-from distributed.protocol.pickle import dumps
+from distributed.utils import PeriodicCallback
 
 logger = logging.getLogger(__name__)
 
@@ -164,8 +163,7 @@ class DRMAACluster(object):
                               template or {})
 
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
-                                                  callback_time=cleanup_interval,
-                                                  io_loop=self.scheduler.loop)
+                                                  callback_time=cleanup_interval)
         self._cleanup_callback.start()
 
         self.workers = {}  # {job-id: WorkerSpec}

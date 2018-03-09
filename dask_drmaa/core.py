@@ -9,11 +9,10 @@ import tempfile
 import drmaa
 from toolz import merge
 from tornado import gen
-from tornado.ioloop import PeriodicCallback
 
 from distributed import LocalCluster
 from distributed.utils import log_errors, ignoring
-from distributed.protocol.pickle import dumps
+from distributed.utils import PeriodicCallback
 
 logger = logging.getLogger(__name__)
 

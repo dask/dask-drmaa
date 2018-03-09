@@ -1,4 +1,4 @@
 dask
-distributed
+distributed >= 1.20.0
 drmaa
 click

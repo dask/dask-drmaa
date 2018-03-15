@@ -34,7 +34,7 @@ class Adaptive(adaptive.Adaptive):
     ...        """ Remove worker addresses from cluster """
     '''
     def __init__(self, cluster=None, scheduler=None, interval=1000,
-                 startup_cost=1, scale_factor=2):
+                 startup_cost=1, scale_factor=2, **kwargs):
         if cluster is None:
             raise TypeError("`Adaptive.__init__() missing required argument: "
                             "`cluster`")
@@ -50,7 +50,8 @@ class Adaptive(adaptive.Adaptive):
 
         super(Adaptive, self).__init__(scheduler, cluster, interval,
                                        startup_cost=startup_cost,
-                                       scale_factor=scale_factor)
+                                       scale_factor=scale_factor,
+                                       **kwargs)
 
     def get_busy_workers(self):
         s = self.scheduler
@@ -93,7 +94,18 @@ class Adaptive(adaptive.Adaptive):
         return kwargs
 
     @gen.coroutine
-    def _retire_workers(self):
+    def _retire_workers(self, workers=None):
+        if workers is None:
+            workers = self.workers_to_close()
+        if not workers:
+            raise gen.Return(workers)
         with log_errors():
-            workers = yield self.scheduler.retire_workers(close_workers=True)
-            logger.info("Retiring workers {}".format(workers))
+            result = yield self.scheduler.retire_workers(workers,
+                                                         remove=True,
+                                                         close_workers=True)
+            if result:
+                logger.info("Retiring workers {}".format(result))
+            # Diverges from distributed.Adaptive here:
+            # ref c51a15a35a8a64c21c1182bfd9209cb6b7d95380
+        raise gen.Return(result)
+

@@ -78,10 +78,20 @@ class Adaptive(adaptive.Adaptive):
         kwargs = {'n': max(instances, len(self.get_busy_workers()))}
         memory = []
         if self.scheduler.unrunnable:
-            for key in self.scheduler.unrunnable:
+            for task in self.scheduler.unrunnable:
+                if isinstance(task, basestring):
+                    # Backwards compatibility for distributed pre-1.21.0
+                    key = task
+                    prefix = key
+                else:
+                    # In distributed==1.21.0, the scheduler now stores TaskState objects
+                    # instead of string keys in its task collections:
+                    # https://github.com/dask/distributed/pull/1594
+                    key = task.key
+                    prefix = task.prefix
                 duration = 0
                 memory = []
-                duration += self.scheduler.task_duration.get(key, 0.1)
+                duration += self.scheduler.task_duration.get(prefix, 0.1)
 
                 if key in self.scheduler.resource_restrictions:
                     m = self.scheduler.resource_restrictions[key].get('memory')

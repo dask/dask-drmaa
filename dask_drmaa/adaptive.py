@@ -118,4 +118,5 @@ class Adaptive(adaptive.Adaptive):
                 logger.info("Retiring workers {}".format(result))
             # Diverges from distributed.Adaptive here:
             # ref c51a15a35a8a64c21c1182bfd9209cb6b7d95380
+            # TODO: can this be reconciled back to base class implementation?
         raise gen.Return(result)

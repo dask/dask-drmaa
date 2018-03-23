@@ -6,7 +6,6 @@ import warnings
 from distributed import Scheduler
 from distributed.utils import log_errors
 from distributed.deploy import adaptive
-from six import string_types
 from tornado import gen
 
 from .core import get_session
@@ -80,16 +79,8 @@ class Adaptive(adaptive.Adaptive):
         memory = []
         if self.scheduler.unrunnable:
             for task in self.scheduler.unrunnable:
-                if isinstance(task, string_types):
-                    # Backwards compatibility for distributed pre-1.21.0
-                    key = task
-                    prefix = key
-                else:
-                    # In distributed==1.21.0, the scheduler now stores TaskState objects
-                    # instead of string keys in its task collections:
-                    # https://github.com/dask/distributed/pull/1594
-                    key = task.key
-                    prefix = task.prefix
+                key = task.key
+                prefix = task.prefix
                 duration = 0
                 memory = []
                 duration += self.scheduler.task_duration.get(prefix, 0.1)

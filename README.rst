@@ -52,8 +52,7 @@ Testing
 
 This repository contains a Docker-compose testing harness for a Son of Grid
 Engine cluster with a master and two slaves.  You can initialize this system
-as follows (for Windows, make sure to remove any carriage returns from all
-`*.sh` shell scripts and `docker-compose.yml`):
+as follows:
 
 .. code-block:: bash
 

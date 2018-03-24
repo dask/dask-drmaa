@@ -42,6 +42,7 @@ class SGECluster(DRMAACluster):
         if memory:
             args = args + ['--memory-limit', str(memory * (1 - memory_fraction))]
             args = args + ['--resources', 'memory=%f' % (memory * memory_fraction)]
+            # h_vmem is SGE-specific
             ns += ' -l h_vmem=%dG' % int(memory / 1e9) # / cpus
         if cpus:
             args = args + ['--nprocs', '1', '--nthreads', str(cpus)]

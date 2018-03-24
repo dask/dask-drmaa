@@ -51,8 +51,8 @@ Testing
 -------
 
 This repository contains a Docker-compose testing harness for a Son of Grid
-Engine cluster with a master and two slaves.   You can initialize this system
-as follows
+Engine cluster with a master and two slaves.  You can initialize this system
+as follows:
 
 .. code-block:: bash
 

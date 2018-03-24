@@ -34,7 +34,7 @@ class Adaptive(adaptive.Adaptive):
     ...        """ Remove worker addresses from cluster """
     '''
     def __init__(self, cluster=None, scheduler=None, interval=1000,
-                 startup_cost=1, scale_factor=2):
+                 startup_cost=1, scale_factor=2, **kwargs):
         if cluster is None:
             raise TypeError("`Adaptive.__init__() missing required argument: "
                             "`cluster`")
@@ -50,7 +50,8 @@ class Adaptive(adaptive.Adaptive):
 
         super(Adaptive, self).__init__(scheduler, cluster, interval,
                                        startup_cost=startup_cost,
-                                       scale_factor=scale_factor)
+                                       scale_factor=scale_factor,
+                                       **kwargs)
 
     def get_busy_workers(self):
         s = self.scheduler
@@ -77,10 +78,12 @@ class Adaptive(adaptive.Adaptive):
         kwargs = {'n': max(instances, len(self.get_busy_workers()))}
         memory = []
         if self.scheduler.unrunnable:
-            for key in self.scheduler.unrunnable:
+            for task in self.scheduler.unrunnable:
+                key = task.key
+                prefix = task.prefix
                 duration = 0
                 memory = []
-                duration += self.scheduler.task_duration.get(key, 0.1)
+                duration += self.scheduler.task_duration.get(prefix, 0.1)
 
                 if key in self.scheduler.resource_restrictions:
                     m = self.scheduler.resource_restrictions[key].get('memory')
@@ -93,7 +96,18 @@ class Adaptive(adaptive.Adaptive):
         return kwargs
 
     @gen.coroutine
-    def _retire_workers(self):
+    def _retire_workers(self, workers=None):
+        if workers is None:
+            workers = self.workers_to_close()
+        if not workers:
+            raise gen.Return(workers)
         with log_errors():
-            workers = yield self.scheduler.retire_workers(close_workers=True)
-            logger.info("Retiring workers {}".format(workers))
+            result = yield self.scheduler.retire_workers(workers,
+                                                         remove=True,
+                                                         close_workers=True)
+            if result:
+                logger.info("Retiring workers {}".format(result))
+            # Diverges from distributed.Adaptive here:
+            # ref c51a15a35a8a64c21c1182bfd9209cb6b7d95380
+            # TODO: can this be reconciled back to base class implementation?
+        raise gen.Return(result)

@@ -259,8 +259,7 @@ class DRMAACluster(object):
 
     def close(self):
         logger.info("Closing DRMAA cluster")
-        if self.workers:
-            self.stop_workers(self.workers, sync=True)
+        self.stop_workers(self.workers, sync=True)
 
         self.local_cluster.close()
         if self._should_cleanup_script and os.path.exists(self.script):

@@ -15,6 +15,16 @@ from distributed.utils_test import loop, inc
 from distributed.utils import tmpfile
 
 
+def test_no_workers(loop):
+    with DRMAACluster(scheduler_port=0) as cluster:
+        with Client(cluster, loop=loop) as client:
+            cluster.start_workers(0)
+            assert not cluster.workers
+            cluster.stop_workers([])
+
+    assert not os.path.exists(cluster.script)
+
+
 def test_simple(loop):
     with DRMAACluster(scheduler_port=0) as cluster:
         with Client(cluster, loop=loop) as client:

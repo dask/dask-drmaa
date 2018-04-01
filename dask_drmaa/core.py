@@ -198,6 +198,9 @@ class DRMAACluster(object):
         return jt
 
     def start_workers(self, n=1, **kwargs):
+        if n == 0:
+            return
+
         with log_errors():
             with self.create_job_template(**kwargs) as jt:
                 ids = get_session().runBulkJobs(jt, 1, n, 1)
@@ -213,8 +216,10 @@ class DRMAACluster(object):
     def stop_workers(self, worker_ids, sync=False):
         if isinstance(worker_ids, str):
             worker_ids = [worker_ids]
-        else:
+        elif worker_ids:
             worker_ids = list(worker_ids)
+        else:
+            return
 
         # Let the scheduler gracefully retire workers first
         ids_to_ips = {
@@ -254,8 +259,7 @@ class DRMAACluster(object):
 
     def close(self):
         logger.info("Closing DRMAA cluster")
-        if self.workers:
-            self.stop_workers(self.workers, sync=True)
+        self.stop_workers(self.workers, sync=True)
 
         self.local_cluster.close()
         if self._should_cleanup_script and os.path.exists(self.script):

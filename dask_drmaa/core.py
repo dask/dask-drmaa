@@ -216,8 +216,10 @@ class DRMAACluster(object):
     def stop_workers(self, worker_ids, sync=False):
         if isinstance(worker_ids, str):
             worker_ids = [worker_ids]
-        else:
+        elif worker_ids:
             worker_ids = list(worker_ids)
+        else:
+            return
 
         # Let the scheduler gracefully retire workers first
         ids_to_ips = {

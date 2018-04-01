@@ -198,6 +198,9 @@ class DRMAACluster(object):
         return jt
 
     def start_workers(self, n=1, **kwargs):
+        if n == 0:
+            return
+
         with log_errors():
             with self.create_job_template(**kwargs) as jt:
                 ids = get_session().runBulkJobs(jt, 1, n, 1)

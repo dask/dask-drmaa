@@ -11,6 +11,7 @@ from toolz import merge
 from tornado import gen
 
 from distributed import LocalCluster
+from distributed.deploy import Cluster
 from distributed.utils import log_errors, ignoring
 from distributed.utils import PeriodicCallback
 
@@ -83,7 +84,7 @@ def make_job_script(executable, name, preexec=()):
     return script_template
 
 
-class DRMAACluster(object):
+class DRMAACluster(Cluster):
     def __init__(self, template=None, cleanup_interval=1000, hostname=None,
                  script=None, preexec_commands=(), copy_script=True,
                  **kwargs):
@@ -169,6 +170,34 @@ class DRMAACluster(object):
 
         self.workers = {}  # {job-id: WorkerSpec}
 
+
+    def adapt(self, **kwargs):
+        """ Turn on adaptivity
+
+        For keyword arguments see dask_drmaa.adaptive.Adaptive
+
+        Examples
+        --------
+        >>> cluster.adapt(minimum=0, maximum=10, interval='500ms')
+
+        See Also
+        --------
+        Cluster: an interface for other clusters to inherit from
+        """
+        from .adaptive import Adaptive
+
+        with ignoring(AttributeError):
+            self._adaptive.stop()
+        if not hasattr(self, '_adaptive_options'):
+            self._adaptive_options = {}
+
+        self._adaptive_options.update(kwargs)
+        self._adaptive = Adaptive(
+            self, self.scheduler, **self._adaptive_options
+        )
+
+        return self._adaptive
+
     @gen.coroutine
     def _start(self):
         pass
@@ -176,10 +205,6 @@ class DRMAACluster(object):
     @property
     def scheduler(self):
         return self.local_cluster.scheduler
-
-    @property
-    def scheduler_address(self):
-        return self.scheduler.address
 
     def create_job_template(self, **kwargs):
         template = self.template.copy()

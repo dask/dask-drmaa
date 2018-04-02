@@ -44,7 +44,9 @@ or::
     pip install .
 
 You must have the DRMAA system library installed and be able to submit jobs
-from your local machine.
+from your local machine. Please make sure to set the environment variable
+``DRMAA_LIBRARY_PATH`` to point to the location of ``libdrmaa.so`` for your
+system.
 
 
 Testing

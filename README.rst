@@ -33,7 +33,15 @@ Or launch from the command line::
 Install
 -------
 
-Currently this is only available through GitHub and source installation::
+Python packages are available from PyPI and can be install with ``pip``::
+
+    pip install dask-drmaa
+
+Also ``conda`` packages are available from conda-forge::
+
+    conda install -c conda-forge dask-drmaa
+
+Additionally the package can be installed from GitHub with the latest changes::
 
     pip install git+https://github.com/dask/dask-drmaa.git --upgrade
 

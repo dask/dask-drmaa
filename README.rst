@@ -1,7 +1,7 @@
 Dask on DRMAA
 =============
 
-|Build Status|
+|Build Status| |PyPI Release| |conda-forge Release|
 
 Deploy a Dask.distributed_ cluster on top of a cluster running a
 DRMAA_-compliant job scheduler.
@@ -139,3 +139,9 @@ Related Work
 
 .. |Build Status| image:: https://travis-ci.org/dask/dask-drmaa.svg?branch=master
    :target: https://travis-ci.org/dask/dask-drmaa
+
+.. |PyPI Release| image:: https://img.shields.io/pypi/v/dask-drmaa.svg
+   :target: https://pypi.python.org/pypi/dask-drmaa
+
+.. |conda-forge Release| image:: https://img.shields.io/conda/vn/conda-forge/dask-drmaa.svg
+   :target: https://github.com/conda-forge/dask-drmaa-feedstock

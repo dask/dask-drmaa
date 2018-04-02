@@ -1,1 +1,7 @@
 dask_drmaa/_version.py export-subst
+
+# Windows compatibility: When setting up testing environment,
+# shell scripts are run in ubuntu-based docker container, so
+# ensure that carriage returns are not present.
+*.sh text eol=lf
+*.yml text eol=lf

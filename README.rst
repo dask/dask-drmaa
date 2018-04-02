@@ -41,7 +41,7 @@ or::
 
     git clone git@github.com:dask/dask-drmaa.git
     cd dask-drmaa
-    python setup.py install
+    pip install .
 
 You must have the DRMAA system library installed and be able to submit jobs
 from your local machine.

@@ -94,16 +94,16 @@ it has more work, and cleaning up these workers when they are no longer
 necessary.  This can simplify setup (you can just leave a cluster running) and
 it can reduce load on the cluster, making IT happy.
 
-To enable this, call the ``Adaptive`` class on a ``DRMAACluster``.  You can
+To enable this, call the ``adapt`` method of a ``DRMAACluster``.  You can
 submit computations to the cluster without ever explicitly creating workers.
 
 .. code-block:: python
 
-   from dask_drmaa import DRMAACluster, Adaptive
+   from dask_drmaa import DRMAACluster
    from dask.distributed import Client
 
    cluster = DRMAACluster()
-   adapt = Adaptive(cluster)
+   cluster.adapt()
    client = Client(cluster)
 
    futures = client.map(func, seq)  # workers will be created as necessary

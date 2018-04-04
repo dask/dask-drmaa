@@ -1,7 +1,7 @@
 Dask on DRMAA
 =============
 
-|Build Status|
+|Build Status| |PyPI Release| |conda-forge Release|
 
 Deploy a Dask.distributed_ cluster on top of a cluster running a
 DRMAA_-compliant job scheduler.
@@ -33,7 +33,15 @@ Or launch from the command line::
 Install
 -------
 
-Currently this is only available through GitHub and source installation::
+Python packages are available from PyPI and can be installed with ``pip``::
+
+    pip install dask-drmaa
+
+Also ``conda`` packages are available from conda-forge::
+
+    conda install -c conda-forge dask-drmaa
+
+Additionally the package can be installed from GitHub with the latest changes::
 
     pip install git+https://github.com/dask/dask-drmaa.git --upgrade
 
@@ -41,10 +49,12 @@ or::
 
     git clone git@github.com:dask/dask-drmaa.git
     cd dask-drmaa
-    python setup.py install
+    pip install .
 
 You must have the DRMAA system library installed and be able to submit jobs
-from your local machine.
+from your local machine. Please make sure to set the environment variable
+``DRMAA_LIBRARY_PATH`` to point to the location of ``libdrmaa.so`` for your
+system.
 
 
 Testing
@@ -137,3 +147,9 @@ Related Work
 
 .. |Build Status| image:: https://travis-ci.org/dask/dask-drmaa.svg?branch=master
    :target: https://travis-ci.org/dask/dask-drmaa
+
+.. |PyPI Release| image:: https://img.shields.io/pypi/v/dask-drmaa.svg
+   :target: https://pypi.python.org/pypi/dask-drmaa
+
+.. |conda-forge Release| image:: https://img.shields.io/conda/vn/conda-forge/dask-drmaa.svg
+   :target: https://github.com/conda-forge/dask-drmaa-feedstock

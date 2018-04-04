@@ -33,7 +33,7 @@ Or launch from the command line::
 Install
 -------
 
-Python packages are available from PyPI and can be install with ``pip``::
+Python packages are available from PyPI and can be installed with ``pip``::
 
     pip install dask-drmaa
 

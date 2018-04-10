@@ -87,6 +87,7 @@ def make_job_script(executable, name, preexec=()):
 class DRMAACluster(Cluster):
     def __init__(self, template=None, cleanup_interval=1000, hostname=None,
                  script=None, preexec_commands=(), copy_script=True,
+                 ip='',
                  **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
@@ -109,6 +110,9 @@ class DRMAACluster(Cluster):
             Where dask-worker runs, defaults to current directory
         nativeSpecification: string
             Options native to the job scheduler
+        ip: string
+            IP of the scheduler, default is the empty string
+            which will listen on the primary ip address of the host
 
         Examples
         --------
@@ -125,7 +129,7 @@ class DRMAACluster(Cluster):
         """
         self.hostname = hostname or socket.gethostname()
         logger.info("Start local scheduler at %s", self.hostname)
-        self.local_cluster = LocalCluster(n_workers=0, ip='', **kwargs)
+        self.local_cluster = LocalCluster(n_workers=0, ip=ip, **kwargs)
 
         if script is None:
             fn = tempfile.mktemp(suffix='sh',

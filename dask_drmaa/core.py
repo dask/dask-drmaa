@@ -35,6 +35,7 @@ worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 
 # All JOB_ID and TASK_ID environment variables
 _drm_info = drmaa.Session().drmsInfo
+
 if "SLURM" in _drm_info:
     JOB_PARAM = "%j"
     JOB_ID = "$SLURM_JOB_ID"
@@ -47,6 +48,10 @@ elif "GE" in _drm_info:
     JOB_PARAM = "$JOB_ID"
     JOB_ID = "$JOB_ID"
     TASK_ID = "$SGE_TASK_ID"
+elif _drm_info == "Torque":
+    JOB_PARAM = "$PBS_JOBID"
+    JOB_ID = "$PBS_JOBID"
+    TASK_ID = "$PBS_TASKNUM"
 else:
     JOB_PARAM = ""
     JOB_ID = ""

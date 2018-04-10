@@ -34,7 +34,9 @@ WorkerSpec = namedtuple('WorkerSpec',
 worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 
 # All JOB_ID and TASK_ID environment variables
-_drm_info = drmaa.Session().drmsInfo
+_session = drmaa.Session()
+_drm_info = _session.drmsInfo
+_drmaa_implementation = _session.drmaaImplementation
 
 if "SLURM" in _drm_info:
     JOB_PARAM = "%j"
@@ -48,7 +50,7 @@ elif "GE" in _drm_info:
     JOB_PARAM = "$JOB_ID"
     JOB_ID = "$JOB_ID"
     TASK_ID = "$SGE_TASK_ID"
-elif _drm_info == "Torque":
+elif "Torque" == _drm_info or "PBS" in _drmaa_implementation:
     JOB_PARAM = "$PBS_JOBID"
     JOB_ID = "$PBS_JOBID"
     TASK_ID = "$PBS_TASKNUM"

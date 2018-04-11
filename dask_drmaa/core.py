@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 _global_session = [None]
 
+
 def get_session():
     if not _global_session[0]:
         _global_session[0] = drmaa.Session()
@@ -78,7 +79,7 @@ def make_job_script(executable, name, preexec=()):
     execute = (
         '%(executable)s $1 --name %(name)s "${@:2}"'
         % dict(executable=executable, name=name)
-        )
+    )
     preparation = list(preexec)
     script_template = '\n'.join([shebang] + preparation + [execute, ''])
     return script_template
@@ -93,22 +94,23 @@ class DRMAACluster(Cluster):
 
         Parameters
         ----------
-        jobName: string
-            Name of the job as known by the DRMAA cluster.
+        template: dict
+            A dict containing template arguments, e.g. the `nativeSpecification`
+            options.
+        cleanup_interval: int
+            interval in seconds for cleanup
+        hostname: string
+            Hostname to use, if not set `socket.gethostname()` will be used
         script: string (optional)
             Path to the dask-worker executable script.
             A temporary file will be made if none is provided (recommended)
+        preexec_commands: iterable
+            A list of commands to execute before starting workers
         copy_script: bool
             Whether should copy the passed script to the current working
             directory. This is primarily to work around an issue with SGE.
-        args: list
-            Extra string arguments to pass to dask-worker
-        outputPath: string
-        errorPath: string
-        workingDirectory: string
-            Where dask-worker runs, defaults to current directory
-        nativeSpecification: string
-            Options native to the job scheduler
+        kwargs: list
+            Extra keyword arguments to pass to LocalCluster
 
         Examples
         --------
@@ -169,7 +171,6 @@ class DRMAACluster(Cluster):
         self._cleanup_callback.start()
 
         self.workers = {}  # {job-id: WorkerSpec}
-
 
     def adapt(self, **kwargs):
         """ Turn on adaptivity
@@ -312,7 +313,6 @@ class DRMAACluster(Cluster):
         return "<%s: %d workers>" % (self.__class__.__name__, len(self.workers))
 
     __repr__ = __str__
-
 
 
 def remove_workers():

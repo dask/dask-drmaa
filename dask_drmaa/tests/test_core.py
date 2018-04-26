@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 from time import sleep, time
+import socket
 
 import pytest
 
@@ -215,3 +216,9 @@ def test_passed_script(loop):
                 assert client.submit(lambda x: x + 1, 10).result() == 11
         assert os.path.exists(fn)  # doesn't cleanup provided script
         assert not os.path.exists(tmp_script_location)
+
+
+def test_ip():
+    ip = socket.gethostbyname(socket.gethostname())
+    with DRMAACluster(ip=ip, scheduler_port=0, diagnostics_port=None) as cluster:
+        assert cluster.local_cluster.scheduler.ip == ip

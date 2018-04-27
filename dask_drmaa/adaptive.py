@@ -94,20 +94,3 @@ class Adaptive(adaptive.Adaptive):
         logger.info("Starting workers due to resource constraints: %s",
                     kwargs['n'])
         return kwargs
-
-    @gen.coroutine
-    def _retire_workers(self, workers=None):
-        if workers is None:
-            workers = self.workers_to_close()
-        if not workers:
-            raise gen.Return(workers)
-        with log_errors():
-            result = yield self.scheduler.retire_workers(workers,
-                                                         remove=True,
-                                                         close_workers=True)
-            if result:
-                logger.info("Retiring workers {}".format(result))
-            # Diverges from distributed.Adaptive here:
-            # ref c51a15a35a8a64c21c1182bfd9209cb6b7d95380
-            # TODO: can this be reconciled back to base class implementation?
-        raise gen.Return(result)

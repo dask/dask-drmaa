@@ -101,25 +101,44 @@ class DRMAACluster(Cluster):
 
         Parameters
         ----------
-        jobName: string
-            Name of the job as known by the DRMAA cluster.
+        template: dict
+            Dictionary specifying options to pass to the DRMAA cluster
+            and the worker. Relevant items are:
+
+            jobName: string
+                Name of the job as known by the DRMAA cluster.
+            args: list
+                Extra string arguments to pass to dask-worker
+            outputPath: string
+                Path to the dask-worker stdout. Must start with ':'.
+                Defaults to worker.JOBID.TASKID.out in current directory.
+            errorPath: string
+                Path to the dask-worker stderr. Must start with ':'
+                Defaults to worker.JOBID.TASKID.err in current directory.
+            workingDirectory: string
+                Where dask-worker runs, defaults to current directory
+            nativeSpecification: string
+                Options native to the job scheduler
+
+        cleanup_interval: int
+            Time interval in seconds at which closed workers are cleaned.
+            Defaults to 1000
+        hostname: string
+            Host on which to start the local scheduler, defaults to localhost
         script: string (optional)
             Path to the dask-worker executable script.
             A temporary file will be made if none is provided (recommended)
+        preexec_commands: tuple (optional)
+            Commands to be executed first by temporary script. Cannot be
+            specified at the same time as script.
         copy_script: bool
             Whether should copy the passed script to the current working
             directory. This is primarily to work around an issue with SGE.
-        args: list
-            Extra string arguments to pass to dask-worker
-        outputPath: string
-        errorPath: string
-        workingDirectory: string
-            Where dask-worker runs, defaults to current directory
-        nativeSpecification: string
-            Options native to the job scheduler
         ip: string
             IP of the scheduler, default is the empty string
             which will listen on the primary ip address of the host
+        **kwargs:
+            Additional keyword arguments to be passed to the local scheduler
 
         Examples
         --------

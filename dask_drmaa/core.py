@@ -103,10 +103,10 @@ class DRMAACluster(Cluster):
                 Extra string arguments to pass to dask-worker
             outputPath: string
                 Path to the dask-worker stdout. Must start with ':'.
-                Defaults to worker.JOBID.TASKID.out in current directory.
+                Defaults to worker.JOBID.JOBINDEX.out in current directory.
             errorPath: string
                 Path to the dask-worker stderr. Must start with ':'
-                Defaults to worker.JOBID.TASKID.err in current directory.
+                Defaults to worker.JOBID.JOBINDEX.err in current directory.
             workingDirectory: string
                 Where dask-worker runs, defaults to current directory
             nativeSpecification: string

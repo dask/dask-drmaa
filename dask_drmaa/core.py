@@ -34,7 +34,9 @@ WorkerSpec = namedtuple('WorkerSpec',
 worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
 
 # All JOB_ID and TASK_ID environment variables
-_drm_info = drmaa.Session().drmsInfo
+_drm_info = get_session().drmsInfo
+_drmaa_implementation = get_session().drmaaImplementation
+
 if "SLURM" in _drm_info:
     JOB_PARAM = "%j"
     JOB_ID = "$SLURM_JOB_ID"
@@ -47,6 +49,10 @@ elif "GE" in _drm_info:
     JOB_PARAM = "$JOB_ID"
     JOB_ID = "$JOB_ID"
     TASK_ID = "$SGE_TASK_ID"
+elif "Torque" == _drm_info or "PBS" in _drmaa_implementation:
+    JOB_PARAM = "$PBS_JOBID"
+    JOB_ID = "$PBS_JOBID"
+    TASK_ID = "$PBS_TASKNUM"
 else:
     JOB_PARAM = ""
     JOB_ID = ""
@@ -87,6 +93,7 @@ def make_job_script(executable, name, preexec=()):
 class DRMAACluster(Cluster):
     def __init__(self, template=None, cleanup_interval=1000, hostname=None,
                  script=None, preexec_commands=(), copy_script=True,
+                 ip='',
                  **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
@@ -103,10 +110,10 @@ class DRMAACluster(Cluster):
                 Extra string arguments to pass to dask-worker
             outputPath: string
                 Path to the dask-worker stdout. Must start with ':'.
-                Defaults to worker.JOBID.JOBINDEX.out in current directory.
+                Defaults to worker.JOBID.TASKID.out in current directory.
             errorPath: string
                 Path to the dask-worker stderr. Must start with ':'
-                Defaults to worker.JOBID.JOBINDEX.err in current directory.
+                Defaults to worker.JOBID.TASKID.err in current directory.
             workingDirectory: string
                 Where dask-worker runs, defaults to current directory
             nativeSpecification: string
@@ -126,6 +133,9 @@ class DRMAACluster(Cluster):
         copy_script: bool
             Whether should copy the passed script to the current working
             directory. This is primarily to work around an issue with SGE.
+        ip: string
+            IP of the scheduler, default is the empty string
+            which will listen on the primary ip address of the host
         **kwargs:
             Additional keyword arguments to be passed to the local scheduler
 
@@ -144,7 +154,7 @@ class DRMAACluster(Cluster):
         """
         self.hostname = hostname or socket.gethostname()
         logger.info("Start local scheduler at %s", self.hostname)
-        self.local_cluster = LocalCluster(n_workers=0, ip='', **kwargs)
+        self.local_cluster = LocalCluster(n_workers=0, ip=ip, **kwargs)
 
         if script is None:
             fn = tempfile.mktemp(suffix='sh',

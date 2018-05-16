@@ -58,19 +58,24 @@ else:
     JOB_ID = ""
     TASK_ID = ""
 
-worker_out_path_template = os.path.join(
+
+worker_default_out_basename = os.path.join(
     os.getcwd(),
-    'worker.%(jid)s.%(ext)s'
+    'worker'
 )
+
+
+def make_worker_out_path(basename, ext):
+    return ':{base}.{jid}.{ext}'.format(base=basename,
+                                        jid='.'.join([JOB_PARAM,
+                                                      '$drmaa_incr_ph$']),
+                                        ext=ext)
+
 
 default_template = {
     'jobName': 'dask-worker',
-    'outputPath': ':' + worker_out_path_template % dict(
-        jid=".".join([JOB_PARAM, '$drmaa_incr_ph$']), ext='out'
-    ),
-    'errorPath': ':' + worker_out_path_template % dict(
-        jid=".".join([JOB_PARAM, '$drmaa_incr_ph$']), ext='err'
-    ),
+    'outputPath': make_worker_out_path(worker_default_out_basename, 'out'),
+    'errorPath': make_worker_out_path(worker_default_out_basename, 'err'),
     'workingDirectory': os.getcwd(),
     'nativeSpecification': '',
     # stdout/stderr are redirected to files, make sure their contents don't lag
@@ -93,7 +98,7 @@ def make_job_script(executable, name, preexec=()):
 class DRMAACluster(Cluster):
     def __init__(self, template=None, cleanup_interval=1000, hostname=None,
                  script=None, preexec_commands=(), copy_script=True,
-                 ip='',
+                 ip='', outputBasename='', errorBasename='',
                  **kwargs):
         """
         Dask workers launched by a DRMAA-compatible cluster
@@ -108,12 +113,6 @@ class DRMAACluster(Cluster):
                 Name of the job as known by the DRMAA cluster.
             args: list
                 Extra string arguments to pass to dask-worker
-            outputPath: string
-                Path to the dask-worker stdout. Must start with ':'.
-                Defaults to worker.JOBID.TASKID.out in current directory.
-            errorPath: string
-                Path to the dask-worker stderr. Must start with ':'
-                Defaults to worker.JOBID.TASKID.err in current directory.
             workingDirectory: string
                 Where dask-worker runs, defaults to current directory
             nativeSpecification: string
@@ -136,6 +135,14 @@ class DRMAACluster(Cluster):
         ip: string
             IP of the scheduler, default is the empty string
             which will listen on the primary ip address of the host
+        outputBasename: string
+            Basename for dask-worker stdout. Final filename will be
+            {outputBasename}.JOBID.out. Defaults to 'worker' in the current
+            directory.
+        errorBasename: string
+            Basename for dask-worker stderr. Final filename will be
+            {outputBasename}.JOBID.err. Defaults to 'worker' in the current
+            directory.
         **kwargs:
             Additional keyword arguments to be passed to the local scheduler
 
@@ -188,9 +195,18 @@ class DRMAACluster(Cluster):
 
         # TODO: check that user-provided script is executable
 
+        # Create outputPath and errorPath if required
+        path_dict = {}
+        if outputBasename:
+            path_dict['outputPath'] = make_worker_out_path(outputBasename,
+                                                           'out')
+        if errorBasename:
+            path_dict['errorPath'] = make_worker_out_path(errorBasename, 'err')
+
         self.template = merge(default_template,
                               {'remoteCommand': self.script},
-                              template or {})
+                              template or {},
+                              path_dict)
 
         self._cleanup_callback = PeriodicCallback(callback=self.cleanup_closed_workers,
                                                   callback_time=cleanup_interval,

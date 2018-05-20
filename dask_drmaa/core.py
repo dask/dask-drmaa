@@ -271,7 +271,7 @@ class DRMAACluster(Cluster):
         if isinstance(worker_ids, str):
             worker_ids = [worker_ids]
         elif worker_ids:
-            worker_ids = list(worker_ids)
+            worker_ids = list(set(worker_ids))
         else:
             return
 

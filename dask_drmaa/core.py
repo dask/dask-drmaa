@@ -285,17 +285,20 @@ class DRMAACluster(Cluster):
         retired = yield self.scheduler.retire_workers(workers=worker_ips,
                                                       close_workers=True)
         logger.info("Retired workers %s", retired)
-        yield self.scale_down(worker_ids)
+        yield self._scale_down(worker_ids)
         if sync:
             get_session().synchronize(worker_ids, dispose=True)
 
     @gen.coroutine
-    def scale_up(self, n, **kwargs):
+    def _scale_up(self, n, **kwargs):
         yield [self.start_workers(**kwargs)
                for _ in range(n - len(self.workers))]
 
+    def scale_up(self, n, **kwargs):
+        self.scheduler.loop.add_callback(self._scale_up, n, **kwargs)
+
     @gen.coroutine
-    def scale_down(self, worker_ids):
+    def _scale_down(self, worker_ids):
         worker_ids = list(set(worker_ids))
 
         for wid in worker_ids:
@@ -311,6 +314,9 @@ class DRMAACluster(Cluster):
                 pass
 
         logger.info("Scaling down workers %s", worker_ids)
+
+    def scale_down(self, worker_ids):
+        self.scheduler.loop.add_callback(self._scale_down, worker_ids)
 
     def close(self):
         logger.info("Closing DRMAA cluster")

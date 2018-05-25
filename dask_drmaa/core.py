@@ -3,8 +3,8 @@ import logging
 import os
 import shutil
 import socket
-import sys
 import tempfile
+from distutils.spawn import find_executable
 
 import drmaa
 from toolz import merge
@@ -14,6 +14,7 @@ from distributed import LocalCluster
 from distributed.deploy import Cluster
 from distributed.utils import log_errors, ignoring
 from distributed.utils import PeriodicCallback
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ WorkerSpec = namedtuple('WorkerSpec',
                         ('job_id', 'kwargs', 'stdout', 'stderr'))
 
 
-worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
+worker_bin_path = find_executable('dask-worker')
 
 # All JOB_ID and TASK_ID environment variables
 _drm_info = get_session().drmsInfo

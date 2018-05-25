@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 _global_session = [None]
 
+
 def get_session():
     if not _global_session[0]:
         _global_session[0] = drmaa.Session()
@@ -157,9 +158,11 @@ class DRMAACluster(Cluster):
         self.local_cluster = LocalCluster(n_workers=0, ip=ip, **kwargs)
 
         if script is None:
-            fn = tempfile.mktemp(suffix='sh',
-                                 prefix='dask-worker-script',
-                                 dir=os.path.curdir)
+            fn = os.path.abspath(tempfile.mktemp(
+                suffix='.sh',
+                prefix='dask-worker-script-',
+                dir=os.path.curdir,
+            ))
             self.script = fn
             self._should_cleanup_script = True
 
@@ -183,7 +186,7 @@ class DRMAACluster(Cluster):
                     shutil.copy(script, os.path.curdir)  # python 2.x returns None
                     script = os.path.join(os.path.curdir, os.path.basename(script))
                     self._should_cleanup_script = True
-            self.script = script
+            self.script = os.path.abspath(script)
             assert not preexec_commands, "Cannot specify both script and preexec_commands"
 
         # TODO: check that user-provided script is executable
@@ -198,7 +201,6 @@ class DRMAACluster(Cluster):
         self._cleanup_callback.start()
 
         self.workers = {}  # {job-id: WorkerSpec}
-
 
     def adapt(self, **kwargs):
         """ Turn on adaptivity

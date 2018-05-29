@@ -31,7 +31,10 @@ WorkerSpec = namedtuple('WorkerSpec',
                         ('job_id', 'kwargs', 'stdout', 'stderr'))
 
 
-worker_bin_path = os.path.join(sys.exec_prefix, 'bin', 'dask-worker')
+worker_bin_path = (
+    '%(python)s -m distributed.cli.dask_worker'
+    % dict(python=sys.executable)
+)
 
 # All JOB_ID and TASK_ID environment variables
 _drm_info = get_session().drmsInfo

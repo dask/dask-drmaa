@@ -106,6 +106,10 @@ def test_multiple_overlapping_clusters(loop):
                     assert future_2.result() == 3
 
 
+@pytest.mark.skip(
+    reason="Failing worker cleanup possibly due to upstream change.\n"
+    "xref: https://github.com/dask/dask-drmaa/issues/93"
+)
 def test_stop_single_worker(loop):
     with DRMAACluster(scheduler_port=0) as cluster:
         with Client(cluster, loop=loop) as client:

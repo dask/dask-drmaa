@@ -1,6 +1,9 @@
 Dask on DRMAA
 =============
 
+*This project is unmaintained. We recommended that you use
+dask-jobqueue_ instead*
+
 |Build Status| |PyPI Release| |conda-forge Release|
 
 Deploy a Dask.distributed_ cluster on top of a cluster running a
@@ -143,6 +146,7 @@ Related Work
 .. _dasksge: https://github.com/mfouesneau/dasksge
 .. _Dask.distributed: http://distributed.readthedocs.io/en/latest/
 .. _DRMAA: https://www.drmaa.org/
+.. _dask-jobqueue: https://github.com/dask/dask-jobqueue
 
 
 .. |Build Status| image:: https://travis-ci.org/dask/dask-drmaa.svg?branch=master

@@ -1,11 +1,8 @@
 Dask on DRMAA
 =============
 
-*This project is unmaintained. We recommended that you use
-dask-jobqueue_ instead.*
-
-.. _dask-jobqueue: https://github.com/dask/dask-jobqueue
-
+*This project is unmaintained. We recommended that you use 
+dask-jobqueue instead: https://github.com/dask/dask-jobqueue*
 
 |Build Status| |PyPI Release| |conda-forge Release|
 

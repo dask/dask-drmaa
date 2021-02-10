@@ -181,6 +181,8 @@ class DRMAACluster(Cluster):
                     os.remove(fn)
 
             os.chmod(self.script, 0o777)
+        else:
+            self.script = script
 
         else:
             self._should_cleanup_script = False

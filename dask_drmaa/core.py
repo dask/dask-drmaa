@@ -276,7 +276,7 @@ class DRMAACluster(Cluster):
         if isinstance(worker_ids, str):
             worker_ids = [worker_ids]
         elif worker_ids:
-            worker_ids = list(worker_ids)
+            worker_ids = list(set(worker_ids))
         else:
             return
 
@@ -290,7 +290,20 @@ class DRMAACluster(Cluster):
         retired = yield self.scheduler.retire_workers(workers=worker_ips,
                                                       close_workers=True)
         logger.info("Retired workers %s", retired)
-        for wid in list(worker_ids):
+        yield self.scale_down(worker_ids)
+        if sync:
+            get_session().synchronize(worker_ids, dispose=True)
+
+    @gen.coroutine
+    def scale_up(self, n, **kwargs):
+        yield [self.start_workers(**kwargs)
+               for _ in range(n - len(self.workers))]
+
+    @gen.coroutine
+    def scale_down(self, worker_ids):
+        worker_ids = list(set(worker_ids))
+
+        for wid in worker_ids:
             try:
                 get_session().control(wid, drmaa.JobControlAction.TERMINATE)
             except drmaa.errors.InvalidJobException:
@@ -302,19 +315,7 @@ class DRMAACluster(Cluster):
                 # been popped off
                 pass
 
-        logger.info("Stop workers %s", worker_ids)
-        if sync:
-            get_session().synchronize(worker_ids, dispose=True)
-
-    @gen.coroutine
-    def scale_up(self, n, **kwargs):
-        yield [self.start_workers(**kwargs)
-               for _ in range(n - len(self.workers))]
-
-    @gen.coroutine
-    def scale_down(self, workers):
-        workers = set(workers)
-        yield self.scheduler.retire_workers(workers=workers)
+        logger.info("Scaling down workers %s", worker_ids)
 
     def close(self):
         logger.info("Closing DRMAA cluster")

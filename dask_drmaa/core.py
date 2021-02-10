@@ -191,6 +191,7 @@ class DRMAACluster(Cluster):
                     self._should_cleanup_script = True
             self.script = os.path.abspath(script)
             assert not preexec_commands, "Cannot specify both script and preexec_commands"
+            self.script = script
 
         # TODO: check that user-provided script is executable
 
